@@ -176,7 +176,8 @@ footer p { margin: 0 0 6px; }
       </select></div>
     <div class="field"><label class="label" for="in-schema">Schema van de sprongen</label>
       <select id="in-schema">
-        <option value="standaard">Oei, ik groei! (startweken)</option>
+        <option value="oig">Oei, ik groei! (website)</option>
+        <option value="standaard">Sprongweek als start (eigen schatting)</option>
         <option value="kort">Kort (vroeg klaar)</option>
         <option value="lang">Lang (vroeg begin, laat klaar)</option>
         <option value="eigen">Eigen weken invullen</option>
@@ -210,14 +211,17 @@ footer p { margin: 0 0 6px; }
   var BW = [5, 8, 12, 19, 26, 37, 46, 55, 64, 75];
   var BE = [6, 9, 13, 23, 30, 41, 51, 60, 69, 79];
   var KORT = [1, 1, 1, 1.5, 2, 2.5, 3, 3, 3, 3];
+  var FS = [4, 7, 11, 14, 22, 33, 41, 51, 59, 70];
+  var FE = [5.5, 8, 12, 20, 26, 37, 46, 55, 64, 75];
   var SCHEMAS = {
-    standaard: { note: "Startweken zoals bekend uit Oei, ik groei!: week 5, 8, 12, 19, 26, 37, 46, 55, 64 en 75 na de uitgerekende datum. Het einde van de lastige periode is mijn schatting en niet uit het boek gehaald. Bronnen noemen bij sprong 4 meestal 4 tot 5 weken (1 tot 6 mogelijk).", f: function (i) { return [BW[i], BE[i]]; } },
+    oig: { note: "Volgens Oei, ik groei! komt de lastige periode vóór de sprongweek en begint die eerder: rond week 4, 7, 11, 14, 22, 33, 41, 51, 59 en 70 na de uitgerekende datum (oeiikgroei.nl en Kruidvat). Einde: bij sprong 4 rond week 20 (genoemd op oeiikgroei.nl), bij sprong 1 rond week 5,5. Bij de andere sprongen heb ik de sprongweek als einde genomen; die eindweken zijn niet bevestigd.", f: function (i) { return [FS[i], FE[i]]; } },
+    standaard: { note: "Mijn eerdere schatting: de lastige periode begint in de sprongweek (5, 8, 12, 19, 26, 37, 46, 55, 64, 75) en duurt daarna 1 tot 5 weken. Dit komt niet uit Oei, ik groei!.", f: function (i) { return [BW[i], BE[i]]; } },
     kort: { note: "Zelfde startweken, maar een kortere onrustige periode: 1 tot 3 weken per sprong. Eigen schatting, geen officiële bron.", f: function (i) { return [BW[i], BW[i] + KORT[i]]; } },
     lang: { note: "Begint een halve week eerder en duurt een week langer dan standaard. Eigen schatting, geen officiële bron.", f: function (i) { return [BW[i] - 0.5, BE[i] + 1]; } },
     eigen: { note: "Vul de weken in die jouw bron noemt. Halve weken mogen (bijvoorbeeld 20.5).", f: function (i) { return custom[i]; } }
   };
   var custom = BW.map(function (w, i) { return [w, BE[i]]; });
-  var state0 = { count: "due", schema: "standaard" };
+  var state0 = { count: "due", schema: "oig" };
   try {
     var saved = JSON.parse(localStorage.getItem("sprongenmeter") || "null");
     if (saved) { if (saved.count === "born" || saved.count === "due") state0.count = saved.count; if (saved.schema && SCHEMAS[saved.schema]) state0.schema = saved.schema; if (saved.custom && saved.custom.length === 10) custom = saved.custom; }
