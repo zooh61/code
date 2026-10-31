@@ -1,0 +1,296 @@
+<title>Sprongenmeter</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700;800&display=swap">
+<style>
+/* Layout: Braun-style instrument panel. Spec strip, round dial, frequency-scale ruler, then ten rows. One orange accent. */
+:root {
+  --bg: #E7E6E1;
+  --panel: #F3F2EE;
+  --ink: #1B1B19;
+  --mute: #6B6A64;
+  --line: #C6C5BF;
+  --accent: #E2520F;
+  --accent-ink: #FFFFFF;
+  --font: "Archivo", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1B1B1A; --panel: #252523; --ink: #ECEBE5; --mute: #9C9B93;
+    --line: #3C3C39; --accent: #F2692B; --accent-ink: #1B1B1A; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1B1B1A; --panel: #252523; --ink: #ECEBE5; --mute: #9C9B93;
+  --line: #3C3C39; --accent: #F2692B; --accent-ink: #1B1B1A; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font);
+  font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased;
+}
+.wrap {
+  max-width: 980px; margin: 0 auto;
+  padding-block: 32px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 28px;
+}
+.wrap > * { min-width: 0; }
+.label { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--mute); }
+.num { font-variant-numeric: tabular-nums; }
+
+header { display: flex; justify-content: space-between; align-items: end; gap: 16px; flex-wrap: wrap; border-bottom: 2px solid var(--ink); padding-bottom: 12px; }
+h1 { margin: 0; font-size: clamp(28px, 6vw, 44px); line-height: 1; font-weight: 800; letter-spacing: -.02em; }
+header .label { padding-bottom: 4px; }
+
+/* spec strip */
+.specs { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.spec { padding: 14px 16px 14px 0; min-width: 0; display: grid; gap: 4px; align-content: start; }
+.spec + .spec { padding-left: 16px; border-left: 1px solid var(--line); }
+.spec b { font-size: 20px; font-weight: 700; letter-spacing: -.01em; }
+.spec small { color: var(--mute); font-size: 13px; }
+@media (max-width: 640px) {
+  .specs { grid-template-columns: 1fr 1fr; }
+  .spec:nth-child(3) { padding-left: 0; border-left: 0; }
+  .spec:nth-child(n+3) { border-top: 1px solid var(--line); }
+}
+
+/* dial + status */
+.now { display: grid; grid-template-columns: 220px 1fr; gap: 32px; align-items: center; background: var(--panel); padding: 28px; }
+@media (max-width: 640px) { .now { grid-template-columns: 1fr; justify-items: center; text-align: center; padding: 24px 16px; } }
+.dial { width: 100%; max-width: 220px; height: auto; display: block; }
+.dial .tick { stroke: var(--mute); stroke-width: 1; }
+.dial .tick.k { stroke: var(--ink); stroke-width: 1.6; }
+.dial .tick.l { stroke: var(--accent); stroke-width: 2.4; }
+.dial .face { fill: var(--bg); stroke: var(--line); stroke-width: 1; }
+.dial .needle { stroke: var(--accent); stroke-width: 3; stroke-linecap: butt; }
+.dial .cap { fill: var(--ink); }
+.dial text { fill: var(--ink); font-family: var(--font); }
+.now h2 { margin: 6px 0 8px; font-size: clamp(24px, 4.5vw, 34px); line-height: 1.1; font-weight: 800; letter-spacing: -.02em; text-wrap: balance; }
+.now p { margin: 0; color: var(--mute); max-width: 52ch; }
+.now p b { color: var(--ink); font-weight: 700; }
+.bar { height: 6px; background: var(--line); margin-top: 18px; max-width: 360px; }
+.bar i { display: block; height: 100%; background: var(--accent); }
+@media (max-width: 640px) { .bar { margin-inline: auto; width: 100%; } }
+
+/* ruler */
+.ruler-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.ruler { overflow-x: auto; background: var(--panel); padding: 8px 0 4px; scrollbar-width: thin; }
+.ruler svg { display: block; width: 960px; height: 118px; }
+.ruler .t { stroke: var(--mute); stroke-width: 1; }
+.ruler .t5 { stroke: var(--ink); stroke-width: 1.5; }
+.ruler text { fill: var(--ink); font-family: var(--font); font-size: 11px; font-weight: 500; }
+.ruler .lt { fill: var(--accent-ink); font-weight: 700; }
+.ruler .band { fill: var(--accent); }
+.ruler .done { fill: var(--ink); }
+.ruler .ahead { fill: none; stroke: var(--ink); stroke-width: 1.5; }
+.ruler .pointer { stroke: var(--accent); stroke-width: 2; }
+.ruler .pointer-dot { fill: var(--accent); }
+
+/* rows */
+.leaps { list-style: none; margin: 0; padding: 0; border-top: 2px solid var(--ink); }
+.leap { display: grid; grid-template-columns: 52px minmax(0, 1fr) 190px; gap: 20px; padding: 18px 0; border-bottom: 1px solid var(--line); align-items: start; }
+@media (max-width: 640px) { .leap { grid-template-columns: 44px minmax(0, 1fr); gap: 14px; } .leap .when { grid-column: 2; } }
+.knob { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 19px; border: 2px solid var(--ink); font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) { .knob { width: 42px; height: 42px; font-size: 17px; } }
+.leap.past .knob { background: var(--ink); color: var(--bg); }
+.leap.now .knob { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.leap h3 { margin: 0 0 2px; font-size: 18px; font-weight: 700; letter-spacing: -.01em; }
+.leap p { margin: 0; color: var(--mute); max-width: 58ch; }
+.leap .skills { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+.skills span { font-size: 12px; border: 1px solid var(--line); padding: 2px 8px; }
+.when { display: grid; gap: 2px; font-size: 13px; }
+.when b { font-size: 15px; font-weight: 700; }
+.state { display: inline-block; margin-top: 4px; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.leap.now .state { color: var(--accent); }
+.leap.past .state, .leap.next .state, .leap.later .state { color: var(--mute); }
+.leap.past h3 { color: var(--mute); }
+
+/* settings */
+.settings { display: flex; flex-wrap: wrap; gap: 20px; align-items: end; border-top: 1px solid var(--line); padding-top: 18px; }
+.field { display: grid; gap: 6px; }
+.field input { font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 0; padding: 8px 10px; min-width: 160px; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+footer { color: var(--mute); font-size: 13px; max-width: 70ch; }
+footer p { margin: 0 0 6px; }
+</style>
+
+<main class="wrap">
+  <header>
+    <h1>Sprongenmeter</h1>
+    <span class="label">Mentale sprongen · 10 stuks</span>
+  </header>
+
+  <section class="specs" aria-label="Gegevens van de baby">
+    <div class="spec"><span class="label">Geboren</span><b id="s-born" class="num"></b><small id="s-born-sub"></small></div>
+    <div class="spec"><span class="label">Uitgerekend</span><b id="s-due" class="num"></b><small id="s-due-sub"></small></div>
+    <div class="spec"><span class="label">Leeftijd</span><b id="s-age" class="num"></b><small id="s-age-sub"></small></div>
+    <div class="spec"><span class="label">Sprongleeftijd</span><b id="s-corr" class="num"></b><small>geteld vanaf uitgerekend</small></div>
+  </section>
+
+  <section class="now" aria-live="polite">
+    <svg class="dial" id="dial" viewBox="0 0 220 220" role="img" aria-label="Wijzerplaat met weken na de uitgerekende datum"></svg>
+    <div>
+      <span class="label" id="n-label"></span>
+      <h2 id="n-title"></h2>
+      <p id="n-text"></p>
+      <div class="bar" id="n-bar" hidden><i id="n-fill"></i></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="ruler-head"><span class="label">Schaal in weken na uitgerekende datum</span><span class="label">Oranje = onrustige periode</span></div>
+    <div class="ruler" id="ruler"></div>
+  </section>
+
+  <ol class="leaps" id="leaps"></ol>
+
+  <section class="settings" aria-label="Datums aanpassen">
+    <div class="field"><label class="label" for="in-born">Geboortedatum</label><input type="date" id="in-born" value="2026-06-09"></div>
+    <div class="field"><label class="label" for="in-due">Uitgerekende datum</label><input type="date" id="in-due" value="2026-06-18"></div>
+  </section>
+
+  <footer>
+    <p>De sprongen tellen vanaf de uitgerekende datum, niet vanaf de geboortedatum. Een baby die 9 dagen te vroeg komt, maakt elke sprong dus 9 dagen later door dan de kalenderleeftijd doet vermoeden.</p>
+    <p>Alle weken en data zijn indicatief. Elke baby wijkt een paar dagen tot een week af.</p>
+  </footer>
+</main>
+
+<script>
+(function () {
+  var DAY = 864e5;
+  var LEAPS = [
+    { n: 1,  w: 5,  e: 6,  name: "Wereld van veranderende sensaties", d: "Baby neemt scherper waar: licht, geluid, geur en aanraking komen bewuster binnen.", s: ["Gericht kijken", "Eerste lachje", "Wakkerder"] },
+    { n: 2,  w: 8,  e: 9,  name: "Wereld van patronen", d: "Baby ontdekt herhaling en vormen, zoals de eigen handjes en terugkerende geluiden.", s: ["Handjes ontdekken", "Voorwerpen volgen", "Eerste geluidjes"] },
+    { n: 3,  w: 12, e: 13, name: "Wereld van vloeiende overgangen", d: "Bewegingen en geluiden worden vloeiender. Baby maakt vaker en soepeler contact.", s: ["Hoofd omhoog", "Meer klanken", "Bewegen en reiken"] },
+    { n: 4,  w: 19, e: 23, name: "Wereld van gebeurtenissen", d: "Baby begrijpt korte reeksen van bewegingen, zoals pakken, rollen en een rammelaar schudden.", s: ["Grijpen", "Rollen", "Brabbelen"] },
+    { n: 5,  w: 26, e: 30, name: "Wereld van relaties", d: "Baby ziet afstand en verband tussen dingen: erin, eronder, dichtbij, ver weg.", s: ["Zitten", "Pakken en laten vallen", "Vreemdelen"] },
+    { n: 6,  w: 37, e: 41, name: "Wereld van categorieën", d: "Baby gaat dingen groeperen en ziet het verschil tussen bijvoorbeeld dieren, eten en speelgoed.", s: ["Kruipen", "Wijzen", "Dingen benoemen"] },
+    { n: 7,  w: 46, e: 51, name: "Wereld van volgordes", d: "Baby snapt dat dingen in een vaste volgorde horen, zoals stapelen en in elkaar passen.", s: ["Staan en lopen", "Stapelen", "Eerste woordjes"] },
+    { n: 8,  w: 55, e: 60, name: "Wereld van programma's", d: "Baby begrijpt routines als aankleden en opruimen, en doet volwassenen na.", s: ["Nadoen", "Helpen", "Zelf eten"] },
+    { n: 9,  w: 64, e: 69, name: "Wereld van principes", d: "Baby past regels en principes flexibel toe en krijgt een eigen wil.", s: ["Eigen wil", "Kiezen", "Rollenspel"] },
+    { n: 10, w: 75, e: 79, name: "Wereld van systemen", d: "Peuter begint zichzelf als persoon te zien, met eigen normen en waarden.", s: ["Zelfbeeld", "Delen", "Samenspelen"] }
+  ];
+  var MAXW = 80;
+
+  var $ = function (id) { return document.getElementById(id); };
+  function utc(s) { var p = s.split("-").map(Number); return Date.UTC(p[0], p[1] - 1, p[2]); }
+  function todayUTC() { var d = new Date(); return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()); }
+  var fShort = new Intl.DateTimeFormat("nl-NL", { day: "numeric", month: "short", timeZone: "UTC" });
+  var fLong = new Intl.DateTimeFormat("nl-NL", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+  var fDay = new Intl.DateTimeFormat("nl-NL", { weekday: "long", timeZone: "UTC" });
+  function wd(days) { var w = Math.floor(days / 7), d = days - w * 7; return w + " wk" + (d ? " " + d + " d" : ""); }
+  function plural(n, one, many) { return n + " " + (n === 1 ? one : many); }
+
+  function dialSVG(week) {
+    var cx = 110, cy = 110, r = 98, start = -135, sweep = 270, out = "";
+    out += '<circle class="face" cx="' + cx + '" cy="' + cy + '" r="108"/>';
+    var leapWeeks = {}; LEAPS.forEach(function (l) { leapWeeks[l.w] = 1; });
+    for (var i = 0; i <= MAXW; i++) {
+      var a = (start + sweep * i / MAXW - 90) * Math.PI / 180;
+      var big = i % 10 === 0, lw = leapWeeks[i];
+      var r2 = lw ? r - 13 : big ? r - 12 : r - 7;
+      out += '<line class="tick' + (lw ? " l" : big ? " k" : "") + '" x1="' + (cx + r * Math.cos(a)).toFixed(1) + '" y1="' + (cy + r * Math.sin(a)).toFixed(1) + '" x2="' + (cx + r2 * Math.cos(a)).toFixed(1) + '" y2="' + (cy + r2 * Math.sin(a)).toFixed(1) + '"/>';
+    }
+    var wc = Math.max(0, Math.min(MAXW, week));
+    var an = (start + sweep * wc / MAXW - 90) * Math.PI / 180;
+    out += '<line class="needle" x1="' + cx + '" y1="' + cy + '" x2="' + (cx + 72 * Math.cos(an)).toFixed(1) + '" y2="' + (cy + 72 * Math.sin(an)).toFixed(1) + '"/>';
+    out += '<circle class="cap" cx="' + cx + '" cy="' + cy + '" r="5"/>';
+    out += '<text x="' + cx + '" y="160" text-anchor="middle" font-size="34" font-weight="800">' + Math.max(0, Math.floor(week)) + '</text>';
+    out += '<text x="' + cx + '" y="178" text-anchor="middle" font-size="9" font-weight="700" letter-spacing="1.4">WEKEN</text>';
+    return out;
+  }
+
+  function rulerSVG(weekF, state) {
+    var x0 = 30, x1 = 930, W = 960, H = 118, u = (x1 - x0) / MAXW;
+    var X = function (w) { return x0 + w * u; };
+    var out = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Tijdlijn van de tien sprongen">';
+    LEAPS.forEach(function (l) {
+      var cls = state[l.n] === "now" ? "band" : state[l.n] === "past" ? "done" : "ahead";
+      out += '<rect class="' + cls + '" x="' + X(l.w) + '" y="14" width="' + ((l.e - l.w) * u) + '" height="30"/>';
+      var tcls = state[l.n] === "future" ? "" : ' class="lt"';
+      var fill = state[l.n] === "future" ? "" : "";
+      out += '<text' + tcls + ' x="' + (X(l.w) + (l.e - l.w) * u / 2) + '" y="34" text-anchor="middle">' + l.n + '</text>';
+    });
+    for (var i = 0; i <= MAXW; i++) {
+      var five = i % 5 === 0;
+      out += '<line class="' + (five ? "t5" : "t") + '" x1="' + X(i) + '" x2="' + X(i) + '" y1="56" y2="' + (five ? 80 : 70) + '"/>';
+      if (five) out += '<text x="' + X(i) + '" y="96" text-anchor="middle">' + i + '</text>';
+    }
+    out += '<line class="t5" x1="' + x0 + '" x2="' + x1 + '" y1="56" y2="56"/>';
+    if (weekF >= 0) {
+      var px = X(Math.min(weekF, MAXW));
+      out += '<line class="pointer" x1="' + px + '" x2="' + px + '" y1="6" y2="86"/><circle class="pointer-dot" cx="' + px + '" cy="104" r="5"/>';
+    }
+    return out + "</svg>";
+  }
+
+  function render() {
+    var born = utc($("in-born").value), due = utc($("in-due").value), today = todayUTC();
+    if (isNaN(born) || isNaN(due)) return;
+    var early = Math.round((due - born) / DAY);
+    var ageD = Math.round((today - born) / DAY), corrD = Math.round((today - due) / DAY);
+    var weekF = corrD / 7;
+
+    $("s-born").textContent = fLong.format(born);
+    $("s-born-sub").textContent = fDay.format(born);
+    $("s-due").textContent = fLong.format(due);
+    $("s-due-sub").textContent = early > 0 ? plural(early, "dag", "dagen") + " later dan de geboorte" : early < 0 ? plural(-early, "dag", "dagen") + " te laat geboren" : "op de dag geboren";
+    $("s-age").textContent = ageD >= 0 ? wd(ageD) : "nog niet geboren";
+    $("s-age-sub").textContent = ageD >= 0 ? plural(ageD, "dag", "dagen") + " sinds de geboorte" : "";
+    $("s-corr").textContent = corrD >= 0 ? wd(corrD) : "nog " + plural(-corrD, "dag", "dagen");
+
+    var state = {}, current = null, next = null;
+    LEAPS.forEach(function (l) {
+      var s = due + l.w * 7 * DAY, e = due + l.e * 7 * DAY;
+      l.sd = s; l.ed = e;
+      if (today >= e) state[l.n] = "past";
+      else if (today >= s) { state[l.n] = "now"; current = l; }
+      else { state[l.n] = "future"; if (!next) next = l; }
+    });
+
+    $("dial").innerHTML = dialSVG(weekF);
+    $("ruler").innerHTML = rulerSVG(weekF, state);
+
+    var lab = $("n-label"), tt = $("n-title"), tx = $("n-text"), bar = $("n-bar");
+    bar.hidden = true;
+    if (current) {
+      var left = Math.round((current.ed - today) / DAY), total = (current.ed - current.sd) / DAY, done = (today - current.sd) / DAY;
+      lab.textContent = "Nu bezig";
+      tt.textContent = "Sprong " + current.n + ": " + current.name;
+      tx.innerHTML = "De onrustige periode loopt tot ongeveer <b>" + fShort.format(current.ed) + "</b>, nog " + plural(left, "dag", "dagen") + ". " + current.d;
+      bar.hidden = false; $("n-fill").style.width = Math.min(100, Math.max(4, done / total * 100)) + "%";
+    } else if (next) {
+      var days = Math.round((next.sd - today) / DAY);
+      lab.textContent = corrD < 0 ? "Nog niet uitgerekend" : "Rustig tussen twee sprongen";
+      tt.textContent = "Sprong " + next.n + " start over " + plural(days, "dag", "dagen");
+      tx.innerHTML = "Verwacht vanaf <b>" + fShort.format(next.sd) + "</b>: " + next.name.toLowerCase() + ". " + next.d;
+    } else {
+      lab.textContent = "Klaar";
+      tt.textContent = "Alle tien sprongen zijn geweest";
+      tx.textContent = "Dit overzicht loopt tot ongeveer 79 weken na de uitgerekende datum.";
+    }
+
+    var nextN = next ? next.n : -1;
+    $("leaps").innerHTML = LEAPS.map(function (l) {
+      var st = state[l.n], cls = st === "future" ? (l.n === nextN ? "next" : "later") : st;
+      var txt = st === "past" ? "Voorbij" : st === "now" ? "Nu bezig" : l.n === nextN ? "Volgende" : "Straks";
+      return '<li class="leap ' + cls + '"><div class="knob">' + l.n + '</div><div><h3>' + l.name + '</h3><p>' + l.d + '</p><div class="skills">' +
+        l.s.map(function (x) { return "<span>" + x + "</span>"; }).join("") + '</div></div><div class="when num"><span class="label">Week ' + l.w + '–' + l.e + '</span><b>' +
+        fShort.format(l.sd) + ' – ' + fShort.format(l.ed) + '</b><span>' + (l.sd < today ? "" : "over " + plural(Math.round((l.sd - today) / DAY), "dag", "dagen")) + '</span><span class="state">' + txt + '</span></div></li>';
+    }).join("");
+  }
+
+  $("in-born").addEventListener("change", render);
+  $("in-due").addEventListener("change", render);
+  render();
+
+  // Scroll the ruler so the pointer is in view on narrow screens.
+  var r = $("ruler"), p = r.querySelector(".pointer");
+  if (p && r.scrollWidth > r.clientWidth) {
+    r.scrollLeft = Math.max(0, parseFloat(p.getAttribute("x1")) * (r.scrollWidth / 960) - r.clientWidth / 2);
+  }
+})();
+</script>
