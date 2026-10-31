@@ -1,0 +1,466 @@
+<title>Twijfelwiel</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+<style>
+  /* Layout: wiel links (groot, sleepbaar), keuzelijst rechts; onder elkaar op een telefoon. */
+  :root {
+    --bg: #8fd3ff;
+    --dots: #b4e2ff;
+    --panel: #ffffff;
+    --panel-2: #eaf6ff;
+    --ink: #1b1340;
+    --line: #1b1340;
+    --text: #1b1340;
+    --muted: #55508a;
+    --sun: #ffc531;
+    --pop: #ff5a5f;
+    --good: #7bd34f;
+    --display: "Lilita One", "Arial Rounded MT Bold", "Trebuchet MS", sans-serif;
+    --body: "Nunito", "Trebuchet MS", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1f1a52; --dots: #2a2468; --panel: #332d78; --panel-2: #29236a;
+      --line: #0c0928; --text: #f6f2ff; --muted: #b8b0f0; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1f1a52; --dots: #2a2468; --panel: #332d78; --panel-2: #29236a;
+    --line: #0c0928; --text: #f6f2ff; --muted: #b8b0f0; color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    background-image: radial-gradient(var(--dots) 2.5px, transparent 3px);
+    background-size: 26px 26px;
+    color: var(--text);
+    font-family: var(--body);
+    font-weight: 600;
+    font-size: 16px;
+    padding-block: 20px 40px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .app { max-width: 1060px; margin: 0 auto; display: grid; gap: 22px; }
+  header { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: space-between; }
+  h1 {
+    font-family: var(--display); font-weight: 400; margin: 0;
+    font-size: clamp(2.2rem, 7vw, 3.6rem); line-height: 1; letter-spacing: .02em;
+    color: var(--sun); -webkit-text-stroke: 3px var(--ink); paint-order: stroke fill;
+    text-shadow: 4px 4px 0 var(--ink); transform: rotate(-2deg); display: inline-block;
+  }
+  .tag { margin: 6px 0 0; max-width: 46ch; color: var(--text); font-weight: 800; }
+
+  .main { display: grid; gap: 22px; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); align-items: start; }
+  @media (max-width: 860px) { .main { grid-template-columns: minmax(0, 1fr); } }
+
+  .card {
+    background: var(--panel); border: 4px solid var(--line); border-radius: 26px;
+    box-shadow: 7px 7px 0 var(--line); padding: 18px;
+  }
+
+  .stage { display: grid; gap: 14px; justify-items: center; }
+  .wheel-wrap { width: min(100%, 560px); aspect-ratio: 1; position: relative; }
+  canvas#wheel { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; border-radius: 50%; }
+  canvas#wheel:active { cursor: grabbing; }
+
+  .banner {
+    width: 100%; text-align: center; background: var(--panel-2); border: 4px dashed var(--line);
+    border-radius: 20px; padding: 10px 14px; min-height: 76px; display: grid; place-content: center; gap: 2px;
+  }
+  .banner small { font-weight: 800; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; font-size: .78rem; }
+  .banner strong { font-family: var(--display); font-weight: 400; font-size: clamp(1.6rem, 6vw, 2.4rem); line-height: 1.1; overflow-wrap: anywhere; }
+  .banner.pop strong { animation: pop .6s cubic-bezier(.2, 1.6, .4, 1); }
+  @keyframes pop { 0% { transform: scale(.3) rotate(-8deg); } 100% { transform: scale(1) rotate(0); } }
+
+  .btn {
+    font-family: var(--display); font-weight: 400; font-size: 1.15rem; letter-spacing: .03em;
+    color: var(--ink); background: var(--sun); border: 4px solid var(--line); border-radius: 999px;
+    padding: 8px 20px; cursor: pointer; box-shadow: 0 5px 0 var(--line);
+    transition: transform .08s, box-shadow .08s;
+  }
+  .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 0 var(--line); }
+  .btn:active { transform: translateY(5px); box-shadow: 0 0 0 var(--line); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; box-shadow: 0 5px 0 var(--line); }
+  .btn.big { font-size: 1.7rem; padding: 10px 34px; background: var(--pop); color: #fff; -webkit-text-stroke: 1px var(--ink); paint-order: stroke fill; }
+  .btn.small { font-size: .95rem; padding: 6px 14px; background: var(--panel-2); color: var(--text); box-shadow: 0 4px 0 var(--line); }
+  .btn:focus-visible, input:focus-visible, .step:focus-visible, .del:focus-visible { outline: 4px solid var(--sun); outline-offset: 2px; }
+
+  .row-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; align-items: center; }
+
+  .panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+  h2 { font-family: var(--display); font-weight: 400; font-size: 1.7rem; margin: 0; letter-spacing: .02em; }
+  .hint { margin: 0 0 14px; color: var(--muted); font-weight: 800; font-size: .95rem; }
+
+  ul#list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .item {
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 8px 10px; align-items: center;
+    background: var(--panel-2); border: 3px solid var(--line); border-radius: 18px; padding: 8px 10px;
+  }
+  .dot { width: 26px; height: 26px; border-radius: 50%; border: 3px solid var(--line); }
+  .item input.name {
+    min-width: 0; width: 100%; font: inherit; font-weight: 800; color: var(--text); background: transparent;
+    border: 0; border-bottom: 3px dotted transparent; padding: 4px 2px; border-radius: 4px;
+  }
+  .item input.name:hover, .item input.name:focus { border-bottom-color: var(--muted); outline: none; }
+  .stepper { display: flex; align-items: center; gap: 4px; }
+  .step {
+    width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--line); background: var(--sun);
+    color: var(--ink); font-family: var(--display); font-size: 1.3rem; line-height: 1; cursor: pointer;
+    box-shadow: 0 3px 0 var(--line); display: grid; place-content: center; padding: 0;
+  }
+  .step:active { transform: translateY(3px); box-shadow: 0 0 0 var(--line); }
+  .step:disabled { opacity: .4; cursor: not-allowed; }
+  .pct { min-width: 3.6ch; text-align: center; font-family: var(--display); font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+  .del {
+    width: 30px; height: 30px; border-radius: 50%; border: 3px solid var(--line); background: var(--panel);
+    color: var(--text); font-weight: 800; cursor: pointer; line-height: 1; padding: 0;
+  }
+  .del:hover { background: var(--pop); color: #fff; }
+  .bar { grid-column: 1 / -1; height: 10px; border-radius: 99px; background: var(--panel); border: 2px solid var(--line); overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; transition: width .25s; }
+  @media (max-width: 440px) {
+    .item { grid-template-columns: auto minmax(0, 1fr) auto; }
+    .stepper { grid-column: 1 / -1; justify-content: center; }
+    .item .del { grid-row: 1; grid-column: 3; }
+  }
+
+  form.add { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  form.add input {
+    flex: 1 1 160px; min-width: 0; font: inherit; font-weight: 800; color: var(--text); background: var(--panel);
+    border: 3px solid var(--line); border-radius: 999px; padding: 9px 16px;
+  }
+  .tools { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+  .empty { text-align: center; color: var(--muted); font-weight: 800; padding: 14px 0; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  @media (prefers-reduced-motion: reduce) { .banner.pop strong { animation: none; } .btn, .bar i { transition: none; } }
+</style>
+
+<div class="app">
+  <header>
+    <div>
+      <h1>Twijfelwiel</h1>
+      <p class="tag">Zet je keuzes op het wiel en geef het wiel een zwiep. Heb je een favoriet? Maak zijn vak groter met de plus.</p>
+    </div>
+    <button class="btn small" id="sound" type="button" aria-pressed="true">Geluid: aan</button>
+  </header>
+
+  <div class="main">
+    <section class="card stage" aria-label="Het wiel">
+      <div class="wheel-wrap"><canvas id="wheel" aria-label="Draaiwiel met je keuzes. Sleep om te draaien."></canvas></div>
+      <div class="row-actions"><button class="btn big" id="spin" type="button">Draai!</button></div>
+      <div class="banner" id="banner" aria-live="polite"><small id="bannerSmall">Klaar voor de start</small><strong id="bannerText">Sleep het wiel of druk op draai!</strong></div>
+    </section>
+
+    <section class="card" aria-label="Jouw keuzes">
+      <div class="panel-head"><h2>Jouw keuzes</h2></div>
+      <p class="hint">Meer zin in een keuze? Tik op + en zijn vak wordt groter, dus ook de kans dat hij wint.</p>
+      <ul id="list"></ul>
+      <form class="add" id="addForm">
+        <label class="sr" for="newName">Nieuwe keuze</label>
+        <input id="newName" type="text" maxlength="28" placeholder="Nieuwe keuze, bijv. Tacos" autocomplete="off">
+        <button class="btn small" type="submit">Toevoegen</button>
+      </form>
+      <div class="tools"><button class="btn small" id="equal" type="button">Alles gelijk</button><button class="btn small" id="clear" type="button">Alles wissen</button></div>
+    </section>
+  </div>
+</div>
+
+<script>
+(function () {
+  var TAU = Math.PI * 2;
+  var COLORS = ['#ff5a5f', '#ffc531', '#2ec4b6', '#6c5ce7', '#ff8a3d', '#4cc9f0', '#7bd34f', '#f472b6'];
+  var INK = '#1b1340', MAX_W = 10, MAX_ITEMS = 12;
+  var KEY = 'twijfelwiel.v1';
+
+  var items = [
+    { id: 1, name: 'Pizza', w: 3 },
+    { id: 2, name: 'Sushi', w: 1 },
+    { id: 3, name: 'Pasta', w: 2 },
+    { id: 4, name: 'Friet', w: 1 }
+  ];
+  var nextId = 10;
+  try {
+    var saved = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (saved && Array.isArray(saved.items)) {
+      items = saved.items.filter(function (i) { return i && typeof i.name === 'string' && i.w >= 1 && i.w <= MAX_W; }).slice(0, MAX_ITEMS);
+      nextId = saved.nextId || 100;
+    }
+  } catch (e) {}
+  function save() { try { localStorage.setItem(KEY, JSON.stringify({ items: items, nextId: nextId })); } catch (e) {} }
+
+  var canvas = document.getElementById('wheel');
+  var ctx = canvas.getContext('2d');
+  var listEl = document.getElementById('list');
+  var bannerEl = document.getElementById('banner');
+  var bannerText = document.getElementById('bannerText');
+  var bannerSmall = document.getElementById('bannerSmall');
+  var spinBtn = document.getElementById('spin');
+  var soundBtn = document.getElementById('sound');
+
+  var rot = 0, omega = 0, spinning = false, dragging = false, kick = 0, lastIdx = -1, frame = 0, raf = 0;
+  var size = 0, dpr = 1, soundOn = true, audio = null, lastT = 0;
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function total() { return items.reduce(function (s, i) { return s + i.w; }, 0); }
+  function colorOf(idx) { return COLORS[idx % COLORS.length]; }
+
+  function indexAtPointer() {
+    var t = total(); if (!items.length) return -1;
+    var a = (((-Math.PI / 2 - rot) % TAU) + TAU) % TAU, acc = 0;
+    for (var i = 0; i < items.length; i++) { acc += items[i].w / t * TAU; if (a < acc) return i; }
+    return items.length - 1;
+  }
+
+  /* ---------- tekenen ---------- */
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    size = canvas.clientWidth || 400;
+    canvas.width = Math.round(size * dpr); canvas.height = Math.round(size * dpr);
+    draw();
+  }
+
+  function fitText(text, maxW) {
+    if (ctx.measureText(text).width <= maxW) return text;
+    while (text.length > 1 && ctx.measureText(text + '…').width > maxW) text = text.slice(0, -1);
+    return text + '…';
+  }
+
+  function draw() {
+    var s = size, c = s / 2;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, s, s);
+    var sc = s / 560;
+    var Rr = c - 16 * sc, R = Rr - 26 * sc;
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+
+    // harde cartoonschaduw
+    ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(c + 7 * sc, c + 9 * sc, Rr, 0, TAU); ctx.fill();
+    // rand
+    ctx.fillStyle = '#ffc531'; ctx.strokeStyle = INK; ctx.lineWidth = 6 * sc;
+    ctx.beginPath(); ctx.arc(c, c, Rr, 0, TAU); ctx.fill(); ctx.stroke();
+    // lampjes
+    var n = 20, ph = Math.floor(frame / 8);
+    for (var b = 0; b < n; b++) {
+      var ba = b / n * TAU, on = (b + ph) % 2 === 0;
+      ctx.fillStyle = on ? '#fff7c2' : '#ff8a3d'; ctx.lineWidth = 2.5 * sc;
+      ctx.beginPath(); ctx.arc(c + Math.cos(ba) * (Rr - 13 * sc), c + Math.sin(ba) * (Rr - 13 * sc), 5.2 * sc, 0, TAU); ctx.fill(); ctx.stroke();
+    }
+
+    // wiel
+    ctx.save(); ctx.translate(c, c);
+    if (items.length < 2) {
+      ctx.fillStyle = '#d9d4f5'; ctx.strokeStyle = INK; ctx.lineWidth = 5 * sc;
+      ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = INK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = (28 * sc) + 'px "Lilita One", sans-serif';
+      ctx.fillText(items.length ? 'Voeg nog een keuze toe' : 'Voeg keuzes toe', 0, 0);
+    } else {
+      ctx.rotate(rot);
+      var t = total(), start = 0, idx;
+      for (idx = 0; idx < items.length; idx++) {
+        var span = items[idx].w / t * TAU;
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, R, start, start + span); ctx.closePath();
+        ctx.fillStyle = colorOf(idx); ctx.fill();
+        ctx.strokeStyle = INK; ctx.lineWidth = 5 * sc; ctx.stroke();
+        // glanslichtje
+        ctx.save(); ctx.clip();
+        ctx.fillStyle = 'rgba(255,255,255,.16)';
+        ctx.beginPath(); ctx.arc(0, 0, R * 0.98, start, start + span); ctx.arc(0, 0, R * 0.8, start + span, start, true); ctx.closePath(); ctx.fill();
+        ctx.restore();
+        start += span;
+      }
+      start = 0;
+      for (idx = 0; idx < items.length; idx++) {
+        var sp = items[idx].w / t * TAU, mid = start + sp / 2;
+        var fs = Math.max(11 * sc, Math.min(R * 0.13, R * 0.62 * sp * 0.62));
+        ctx.save(); ctx.rotate(mid);
+        ctx.font = fs + 'px "Lilita One", sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+        var label = fitText(items[idx].name, R * 0.62);
+        ctx.lineWidth = Math.max(3, fs * 0.28); ctx.strokeStyle = INK; ctx.strokeText(label, R - 20 * sc, 0);
+        ctx.fillStyle = '#fff'; ctx.fillText(label, R - 20 * sc, 0);
+        ctx.restore(); start += sp;
+      }
+    }
+    ctx.restore();
+
+    // naaf
+    ctx.fillStyle = '#ffc531'; ctx.strokeStyle = INK; ctx.lineWidth = 5 * sc;
+    ctx.beginPath(); ctx.arc(c, c, R * 0.17, 0, TAU); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = INK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = (R * 0.1) + 'px "Lilita One", sans-serif'; ctx.fillText('HMM', c, c + 1);
+
+    // wijzer (staat stil, wiebelt bij tikjes)
+    ctx.save(); ctx.translate(c, c - Rr + 4 * sc); ctx.rotate(kick * 0.35);
+    ctx.fillStyle = '#ff5a5f'; ctx.strokeStyle = INK; ctx.lineWidth = 5 * sc;
+    ctx.beginPath(); ctx.moveTo(0, 38 * sc); ctx.lineTo(-20 * sc, -8 * sc); ctx.quadraticCurveTo(0, -24 * sc, 20 * sc, -8 * sc); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, -2 * sc, 5.5 * sc, 0, TAU); ctx.fill(); ctx.lineWidth = 3 * sc; ctx.stroke();
+    ctx.restore();
+  }
+
+  /* ---------- geluid ---------- */
+  function tick() {
+    if (!soundOn) return;
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      var o = audio.createOscillator(), g = audio.createGain(), now = audio.currentTime;
+      o.type = 'square'; o.frequency.value = 520 + Math.random() * 120;
+      g.gain.setValueAtTime(0.05, now); g.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
+      o.connect(g); g.connect(audio.destination); o.start(now); o.stop(now + 0.06);
+    } catch (e) {}
+  }
+  function fanfare() {
+    if (!soundOn) return;
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      [523, 659, 784, 1047].forEach(function (f, i) {
+        var o = audio.createOscillator(), g = audio.createGain(), t0 = audio.currentTime + i * 0.09;
+        o.type = 'triangle'; o.frequency.value = f;
+        g.gain.setValueAtTime(0.12, t0); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.25);
+        o.connect(g); g.connect(audio.destination); o.start(t0); o.stop(t0 + 0.28);
+      });
+    } catch (e) {}
+  }
+
+  /* ---------- animatie ---------- */
+  function loop(ts) {
+    raf = 0;
+    var dt = lastT ? Math.min((ts - lastT) / 1000, 0.05) : 0.016; lastT = ts;
+    frame++;
+    if (spinning && !dragging) {
+      rot += omega * dt;
+      omega *= Math.exp(-0.9 * dt);
+      if (Math.abs(omega) < 0.08) { omega = 0; spinning = false; finish(); }
+    }
+    if (spinning || dragging) {
+      var idx = indexAtPointer();
+      if (idx !== lastIdx) { if (lastIdx !== -1) { tick(); kick = 1; } lastIdx = idx; }
+    }
+    kick *= Math.exp(-9 * dt); if (kick < 0.01) kick = 0;
+    draw();
+    if (spinning || dragging || kick > 0) raf = requestAnimationFrame(loop); else lastT = 0;
+  }
+  function wake() { if (!raf) raf = requestAnimationFrame(loop); }
+
+  function setBanner(small, text, color, pop) {
+    bannerSmall.textContent = small; bannerText.textContent = text;
+    bannerText.style.color = color || '';
+    bannerEl.classList.remove('pop');
+    if (pop && !reduce) { void bannerEl.offsetWidth; bannerEl.classList.add('pop'); }
+  }
+  function finish() {
+    var idx = indexAtPointer(); if (idx < 0) return;
+    var it = items[idx];
+    setBanner('Het wordt…', it.name + '!', colorOf(idx) === '#ffc531' ? '#e0a000' : colorOf(idx), true);
+    fanfare(); updateSpinState();
+  }
+  function startSpin(v) {
+    if (items.length < 2) return;
+    omega = v; spinning = true; lastIdx = indexAtPointer();
+    setBanner('Daar gaat hij…', 'Wie wordt het?', '', false);
+    wake(); updateSpinState();
+  }
+  function updateSpinState() { spinBtn.disabled = items.length < 2 || spinning; }
+
+  spinBtn.addEventListener('click', function () {
+    try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); if (audio.state === 'suspended') audio.resume(); } catch (e) {}
+    startSpin((16 + Math.random() * 10) * (Math.random() < 0.15 ? -1 : 1));
+  });
+
+  /* ---------- aan het wiel draaien ---------- */
+  var lastAng = 0, lastMove = 0, vel = 0;
+  function angleOf(e) {
+    var r = canvas.getBoundingClientRect();
+    return Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2));
+  }
+  canvas.addEventListener('pointerdown', function (e) {
+    if (items.length < 2) return;
+    try { canvas.setPointerCapture(e.pointerId); } catch (x) {}
+    try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); if (audio.state === 'suspended') audio.resume(); } catch (x) {}
+    dragging = true; spinning = false; omega = 0; vel = 0;
+    lastAng = angleOf(e); lastMove = performance.now(); lastIdx = indexAtPointer(); lastT = 0;
+    wake();
+  });
+  canvas.addEventListener('pointermove', function (e) {
+    if (!dragging) return;
+    var a = angleOf(e), d = a - lastAng;
+    if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU;
+    var now = performance.now(), dt = Math.max((now - lastMove) / 1000, 0.001);
+    rot += d; vel = vel * 0.6 + (d / dt) * 0.4;
+    lastAng = a; lastMove = now;
+  });
+  function release() {
+    if (!dragging) return;
+    dragging = false;
+    if (performance.now() - lastMove > 120) vel = 0;
+    if (Math.abs(vel) > 1.2) { omega = Math.max(-26, Math.min(26, vel)); spinning = true; setBanner('Daar gaat hij…', 'Wie wordt het?', '', false); }
+    updateSpinState(); wake();
+  }
+  canvas.addEventListener('pointerup', release);
+  canvas.addEventListener('pointercancel', release);
+
+  /* ---------- keuzelijst ---------- */
+  function render() {
+    listEl.textContent = '';
+    if (!items.length) {
+      var e = document.createElement('li'); e.className = 'empty'; e.textContent = 'Nog geen keuzes. Voeg er twee of meer toe.'; listEl.appendChild(e);
+    }
+    items.forEach(function (it, idx) {
+      var li = document.createElement('li'); li.className = 'item'; li.dataset.id = it.id;
+      var dot = document.createElement('span'); dot.className = 'dot'; dot.dataset.role = 'dot';
+      var inp = document.createElement('input'); inp.className = 'name'; inp.type = 'text'; inp.value = it.name; inp.maxLength = 28;
+      inp.id = 'name-' + it.id; inp.setAttribute('aria-label', 'Naam van keuze ' + (idx + 1));
+      inp.addEventListener('input', function () { it.name = inp.value; save(); draw(); });
+      var st = document.createElement('div'); st.className = 'stepper';
+      var minus = document.createElement('button'); minus.type = 'button'; minus.className = 'step'; minus.textContent = '−'; minus.dataset.role = 'minus';
+      var pct = document.createElement('span'); pct.className = 'pct'; pct.dataset.role = 'pct';
+      var plus = document.createElement('button'); plus.type = 'button'; plus.className = 'step'; plus.textContent = '+'; plus.dataset.role = 'plus';
+      minus.addEventListener('click', function () { if (it.w > 1) { it.w--; changed(); } });
+      plus.addEventListener('click', function () { if (it.w < MAX_W) { it.w++; changed(); } });
+      st.append(minus, pct, plus);
+      var del = document.createElement('button'); del.type = 'button'; del.className = 'del'; del.textContent = '×';
+      del.addEventListener('click', function () { items = items.filter(function (x) { return x !== it; }); save(); render(); updateSpinState(); draw(); });
+      var bar = document.createElement('div'); bar.className = 'bar'; var fill = document.createElement('i'); bar.appendChild(fill);
+      li.append(dot, inp, st, del, bar); listEl.appendChild(li);
+    });
+    updateMeta();
+  }
+  function updateMeta() {
+    var t = total();
+    Array.prototype.forEach.call(listEl.querySelectorAll('.item'), function (li, idx) {
+      var it = items[idx]; if (!it) return;
+      var col = colorOf(idx), share = t ? it.w / t : 0;
+      li.querySelector('[data-role=dot]').style.background = col;
+      li.querySelector('[data-role=pct]').textContent = Math.round(share * 100) + '%';
+      li.querySelector('[data-role=minus]').disabled = it.w <= 1;
+      li.querySelector('[data-role=minus]').setAttribute('aria-label', it.name + ' kleiner maken');
+      li.querySelector('[data-role=plus]').disabled = it.w >= MAX_W;
+      li.querySelector('[data-role=plus]').setAttribute('aria-label', it.name + ' groter maken');
+      var f = li.querySelector('.bar i'); f.style.width = (share * 100) + '%'; f.style.background = col;
+    });
+  }
+  function changed() { save(); updateMeta(); draw(); }
+
+  document.getElementById('addForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var inp = document.getElementById('newName'), v = inp.value.trim();
+    if (!v || items.length >= MAX_ITEMS) return;
+    items.push({ id: nextId++, name: v, w: 1 }); inp.value = '';
+    save(); render(); updateSpinState(); draw(); inp.focus();
+  });
+  document.getElementById('equal').addEventListener('click', function () { items.forEach(function (i) { i.w = 1; }); changed(); });
+  document.getElementById('clear').addEventListener('click', function () { items = []; save(); render(); updateSpinState(); setBanner('Klaar voor de start', 'Voeg keuzes toe om te draaien', '', false); draw(); });
+  soundBtn.addEventListener('click', function () {
+    soundOn = !soundOn; soundBtn.textContent = 'Geluid: ' + (soundOn ? 'aan' : 'uit'); soundBtn.setAttribute('aria-pressed', String(soundOn));
+  });
+
+  window.addEventListener('resize', resize);
+  if (window.ResizeObserver) new ResizeObserver(resize).observe(canvas);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(draw);
+
+  render(); updateSpinState(); resize();
+})();
+</script>
