@@ -85,26 +85,38 @@ header .label { padding-bottom: 4px; }
 .ruler .lt { fill: var(--accent-ink); font-weight: 700; }
 .ruler .band { fill: var(--accent); }
 .ruler .done { fill: var(--ink); }
+.ruler .dev { fill: var(--line); }
+.ruler .devnow { fill: var(--line); stroke: var(--accent); stroke-width: 2; }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 14px; height: 10px; display: inline-block; }
+.legend .lk-l { background: var(--accent); }
+.legend .lk-d { background: var(--line); }
 .ruler .ahead { fill: none; stroke: var(--ink); stroke-width: 1.5; }
 .ruler .pointer { stroke: var(--accent); stroke-width: 2; }
 .ruler .pointer-dot { fill: var(--accent); }
 
 /* rows */
 .leaps { list-style: none; margin: 0; padding: 0; border-top: 2px solid var(--ink); }
-.leap { display: grid; grid-template-columns: 52px minmax(0, 1fr) 190px; gap: 20px; padding: 18px 0; border-bottom: 1px solid var(--line); align-items: start; }
+.leap { display: grid; grid-template-columns: 52px minmax(0, 1fr) 230px; gap: 20px; padding: 18px 0; border-bottom: 1px solid var(--line); align-items: start; }
 @media (max-width: 640px) { .leap { grid-template-columns: 44px minmax(0, 1fr); gap: 14px; } .leap .when { grid-column: 2; } }
 .knob { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 19px; border: 2px solid var(--ink); font-variant-numeric: tabular-nums; }
 @media (max-width: 640px) { .knob { width: 42px; height: 42px; font-size: 17px; } }
 .leap.past .knob { background: var(--ink); color: var(--bg); }
+.leap.dev .knob { border-color: var(--accent); border-width: 5px; }
 .leap.now .knob { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .leap h3 { margin: 0 0 2px; font-size: 18px; font-weight: 700; letter-spacing: -.01em; }
 .leap p { margin: 0; color: var(--mute); max-width: 58ch; }
 .leap .skills { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
-.skills span { font-size: 12px; border: 1px solid var(--line); padding: 2px 8px; }
+.skills .label { align-self: center; margin-right: 4px; }
+.skills span:not(.label) { font-size: 12px; border: 1px solid var(--line); padding: 2px 8px; }
 .when { display: grid; gap: 2px; font-size: 13px; }
 .when b { font-size: 15px; font-weight: 700; }
 .state { display: inline-block; margin-top: 4px; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
-.leap.now .state { color: var(--accent); }
+.leap.now .state, .leap.dev .state { color: var(--accent); }
+.when .sub { font-weight: 500; color: var(--ink); }
+.when .label { margin-top: 6px; }
+.when .label:first-child { margin-top: 0; }
 .leap.past .state, .leap.next .state, .leap.later .state { color: var(--mute); }
 .leap.past h3 { color: var(--mute); }
 
@@ -147,7 +159,7 @@ footer p { margin: 0 0 6px; }
   </section>
 
   <section>
-    <div class="ruler-head"><span class="label">Schaal in weken na uitgerekende datum</span><span class="label">Oranje = onrustige periode</span></div>
+    <div class="ruler-head"><span class="label">Schaal in weken na uitgerekende datum</span><span class="label legend"><span><i class="lk-l"></i>Lastige periode</span><span><i class="lk-d"></i>Ontwikkelingsfase</span></span></div>
     <div class="ruler" id="ruler"></div>
   </section>
 
@@ -245,7 +257,9 @@ footer p { margin: 0 0 6px; }
     var X = function (w) { return x0 + w * u; };
     var out = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Tijdlijn van de tien sprongen">';
     LEAPS.forEach(function (l) {
-      var cls = state[l.n] === "now" ? "band" : state[l.n] === "past" ? "done" : "ahead";
+      var dw = Math.min(l.dw, MAXW);
+      if (dw > l.e) out += '<rect class="' + (state[l.n] === "dev" ? "devnow" : "dev") + '" x="' + X(l.e) + '" y="14" width="' + ((dw - l.e) * u) + '" height="30"/>';
+      var cls = state[l.n] === "now" ? "band" : (state[l.n] === "past" || state[l.n] === "dev") ? "done" : "ahead";
       out += '<rect class="' + cls + '" x="' + X(l.w) + '" y="14" width="' + ((l.e - l.w) * u) + '" height="30"/>';
       var tcls = state[l.n] === "future" ? "" : ' class="lt"';
       var fill = state[l.n] === "future" ? "" : "";
@@ -289,12 +303,18 @@ footer p { margin: 0 0 6px; }
     $("s-age-sub").textContent = ageD >= 0 ? plural(ageD, "dag", "dagen") + " sinds de geboorte" : "";
     $("s-corr").textContent = corrD >= 0 ? wd(corrD) : "nog " + plural(-corrD, "dag", "dagen");
 
-    var state = {}, current = null, next = null;
-    LEAPS.forEach(function (l) {
-      var s = anchor + Math.round(l.w * 7) * DAY, e = anchor + Math.round(l.e * 7) * DAY;
-      l.sd = s; l.ed = e;
-      if (today >= e) state[l.n] = "past";
-      else if (today >= s) { state[l.n] = "now"; current = l; }
+    var state = {}, current = null, next = null, dev = null;
+    LEAPS.forEach(function (l, i) {
+      l.sd = anchor + Math.round(l.w * 7) * DAY; l.ed = anchor + Math.round(l.e * 7) * DAY;
+      var nx = LEAPS[i + 1];
+      l.dw = nx ? Math.max(l.e, Number(nx.w)) : l.e + 3;
+    });
+    LEAPS.forEach(function (l, i) {
+      var nx = LEAPS[i + 1];
+      l.dd = nx ? Math.max(l.ed, anchor + Math.round(nx.w * 7) * DAY) : l.ed + 21 * DAY;
+      if (today >= l.dd) state[l.n] = "past";
+      else if (today >= l.ed) { state[l.n] = "dev"; dev = l; }
+      else if (today >= l.sd) { state[l.n] = "now"; current = l; }
       else { state[l.n] = "future"; if (!next) next = l; }
     });
 
@@ -305,10 +325,16 @@ footer p { margin: 0 0 6px; }
     bar.hidden = true;
     if (current) {
       var left = Math.round((current.ed - today) / DAY), total = (current.ed - current.sd) / DAY, done = (today - current.sd) / DAY;
-      lab.textContent = "Nu bezig";
+      lab.textContent = "Lastige periode";
       tt.textContent = "Sprong " + current.n + ": " + current.name;
-      tx.innerHTML = "De onrustige periode loopt tot ongeveer <b>" + fShort.format(current.ed) + "</b>, nog " + plural(left, "dag", "dagen") + ". " + current.d;
+      tx.innerHTML = "De lastige periode loopt tot ongeveer <b>" + fShort.format(current.ed) + "</b>, nog " + plural(left, "dag", "dagen") + ". Daarna volgt de ontwikkelingsfase tot ongeveer " + fShort.format(current.dd) + ". " + current.d;
       bar.hidden = false; $("n-fill").style.width = Math.min(100, Math.max(4, done / total * 100)) + "%";
+    } else if (dev) {
+      var dl = Math.max(0, Math.round((dev.dd - today) / DAY)), dtot = (dev.dd - dev.ed) / DAY, ddone = (today - dev.ed) / DAY;
+      lab.textContent = "Ontwikkelingsfase";
+      tt.textContent = "Na sprong " + dev.n + ": nieuwe vaardigheden";
+      tx.innerHTML = "De lastige periode is voorbij. Tot ongeveer <b>" + fShort.format(dev.dd) + "</b> (nog " + plural(dl, "dag", "dagen") + ") is baby meestal rustiger en laat nieuwe dingen zien: <b>" + dev.s.join(", ").toLowerCase() + "</b>." + (next ? " Sprong " + next.n + " begint over " + plural(Math.round((next.sd - today) / DAY), "dag", "dagen") + "." : "");
+      bar.hidden = false; $("n-fill").style.width = Math.min(100, Math.max(4, ddone / dtot * 100)) + "%";
     } else if (next) {
       var days = Math.round((next.sd - today) / DAY);
       lab.textContent = corrD < 0 ? "Nog niet uitgerekend" : "Rustig tussen twee sprongen";
@@ -323,10 +349,13 @@ footer p { margin: 0 0 6px; }
     var nextN = next ? next.n : -1;
     $("leaps").innerHTML = LEAPS.map(function (l) {
       var st = state[l.n], cls = st === "future" ? (l.n === nextN ? "next" : "later") : st;
-      var txt = st === "past" ? "Voorbij" : st === "now" ? "Nu bezig" : l.n === nextN ? "Volgende" : "Straks";
-      return '<li class="leap ' + cls + '"><div class="knob">' + l.n + '</div><div><h3>' + l.name + '</h3><p>' + l.d + '</p><div class="skills">' +
-        l.s.map(function (x) { return "<span>" + x + "</span>"; }).join("") + '</div></div><div class="when num"><span class="label">Week ' + wk(l.w) + '–' + wk(l.e) + '</span><b>' +
-        fShort.format(l.sd) + ' – ' + fShort.format(l.ed) + '</b><span>' + (l.sd < today ? "" : "over " + plural(Math.round((l.sd - today) / DAY), "dag", "dagen")) + '</span><span class="state">' + txt + '</span></div></li>';
+      var txt = st === "past" ? "Voorbij" : st === "now" ? "Lastige periode nu" : st === "dev" ? "Ontwikkelingsfase nu" : l.n === nextN ? "Volgende" : "Straks";
+      var soon = l.sd < today ? "" : '<span>over ' + plural(Math.round((l.sd - today) / DAY), "dag", "dagen") + '</span>';
+      return '<li class="leap ' + cls + '"><div class="knob">' + l.n + '</div><div><h3>' + l.name + '</h3><p>' + l.d + '</p><div class="skills"><span class="label">Nieuw</span>' +
+        l.s.map(function (x) { return "<span>" + x + "</span>"; }).join("") + '</div></div><div class="when num">' +
+        '<span class="label">Lastige periode · week ' + wk(l.w) + '–' + wk(l.e) + '</span><b>' + fShort.format(l.sd) + ' – ' + fShort.format(l.ed) + '</b>' +
+        '<span class="label">Ontwikkelingsfase · week ' + wk(l.e) + '–' + wk(l.dw) + '</span><b class="sub">' + fShort.format(l.ed) + ' – ' + fShort.format(l.dd) + '</b>' +
+        soon + '<span class="state">' + txt + '</span></div></li>';
     }).join("");
   }
 
