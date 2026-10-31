@@ -26,6 +26,7 @@
   --line: #3C3C39; --accent: #F2692B; --accent-ink: #1B1B1A; color-scheme: dark;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body {
   background: var(--bg); color: var(--ink); font-family: var(--font);
   font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased;
@@ -353,8 +354,8 @@ footer p { margin: 0 0 6px; }
       var soon = l.sd < today ? "" : '<span>over ' + plural(Math.round((l.sd - today) / DAY), "dag", "dagen") + '</span>';
       return '<li class="leap ' + cls + '"><div class="knob">' + l.n + '</div><div><h3>' + l.name + '</h3><p>' + l.d + '</p><div class="skills"><span class="label">Nieuw</span>' +
         l.s.map(function (x) { return "<span>" + x + "</span>"; }).join("") + '</div></div><div class="when num">' +
-        '<span class="label">Lastige periode · week ' + wk(l.w) + '–' + wk(l.e) + '</span><b>' + fShort.format(l.sd) + ' – ' + fShort.format(l.ed) + '</b>' +
-        '<span class="label">Ontwikkelingsfase · week ' + wk(l.e) + '–' + wk(l.dw) + '</span><b class="sub">' + fShort.format(l.ed) + ' – ' + fShort.format(l.dd) + '</b>' +
+        '<span class="label">Lastig · wk ' + wk(l.w) + '–' + wk(l.e) + '</span><b>' + fShort.format(l.sd) + ' – ' + fShort.format(l.ed) + '</b>' +
+        '<span class="label">Ontwikkeling · wk ' + wk(l.e) + '–' + wk(l.dw) + '</span><b class="sub">' + fShort.format(l.ed) + ' – ' + fShort.format(l.dd) + '</b>' +
         soon + '<span class="state">' + txt + '</span></div></li>';
     }).join("");
   }
