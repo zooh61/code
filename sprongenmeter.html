@@ -113,6 +113,12 @@ header .label { padding-bottom: 4px; }
 .field { display: grid; gap: 6px; }
 .field input { font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 0; padding: 8px 10px; min-width: 160px; }
 :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.field select { font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 0; padding: 8px 10px; min-width: 220px; max-width: 100%; }
+.schema-note { flex-basis: 100%; margin: 0; color: var(--mute); font-size: 13px; max-width: 70ch; }
+.custom { flex-basis: 100%; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px 20px; }
+.custom .row { display: grid; gap: 4px; }
+.custom .pair { display: flex; gap: 6px; align-items: center; }
+.custom input { font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 0; padding: 6px 8px; width: 100%; min-width: 0; font-variant-numeric: tabular-nums; }
 footer { color: var(--mute); font-size: 13px; max-width: 70ch; }
 footer p { margin: 0 0 6px; }
 </style>
@@ -127,7 +133,7 @@ footer p { margin: 0 0 6px; }
     <div class="spec"><span class="label">Geboren</span><b id="s-born" class="num"></b><small id="s-born-sub"></small></div>
     <div class="spec"><span class="label">Uitgerekend</span><b id="s-due" class="num"></b><small id="s-due-sub"></small></div>
     <div class="spec"><span class="label">Leeftijd</span><b id="s-age" class="num"></b><small id="s-age-sub"></small></div>
-    <div class="spec"><span class="label">Sprongleeftijd</span><b id="s-corr" class="num"></b><small>geteld vanaf uitgerekend</small></div>
+    <div class="spec"><span class="label" id="s-corr-label">Sprongleeftijd</span><b id="s-corr" class="num"></b><small id="s-corr-sub"></small></div>
   </section>
 
   <section class="now" aria-live="polite">
@@ -147,13 +153,27 @@ footer p { margin: 0 0 6px; }
 
   <ol class="leaps" id="leaps"></ol>
 
-  <section class="settings" aria-label="Datums aanpassen">
+  <section class="settings" aria-label="Instellingen">
     <div class="field"><label class="label" for="in-born">Geboortedatum</label><input type="date" id="in-born" value="2026-06-09"></div>
     <div class="field"><label class="label" for="in-due">Uitgerekende datum</label><input type="date" id="in-due" value="2026-06-18"></div>
+    <div class="field"><label class="label" for="in-count">Telling</label>
+      <select id="in-count">
+        <option value="due">Vanaf uitgerekende datum</option>
+        <option value="born">Vanaf geboortedatum</option>
+      </select></div>
+    <div class="field"><label class="label" for="in-schema">Schema van de sprongen</label>
+      <select id="in-schema">
+        <option value="standaard">Standaard</option>
+        <option value="kort">Kort (vroeg klaar)</option>
+        <option value="lang">Lang (vroeg begin, laat klaar)</option>
+        <option value="eigen">Eigen weken invullen</option>
+      </select></div>
+    <p class="schema-note" id="schema-note"></p>
+    <div class="custom" id="custom" hidden></div>
   </section>
 
   <footer>
-    <p>De sprongen tellen vanaf de uitgerekende datum, niet vanaf de geboortedatum. Een baby die 9 dagen te vroeg komt, maakt elke sprong dus 9 dagen later door dan de kalenderleeftijd doet vermoeden.</p>
+    <p id="f-note"></p>
     <p>Alle weken en data zijn indicatief. Elke baby wijkt een paar dagen tot een week af.</p>
   </footer>
 </main>
@@ -174,6 +194,23 @@ footer p { margin: 0 0 6px; }
     { n: 10, w: 75, e: 79, name: "Wereld van systemen", d: "Peuter begint zichzelf als persoon te zien, met eigen normen en waarden.", s: ["Zelfbeeld", "Delen", "Samenspelen"] }
   ];
   var MAXW = 80;
+  var BW = [5, 8, 12, 19, 26, 37, 46, 55, 64, 75];
+  var BE = [6, 9, 13, 23, 30, 41, 51, 60, 69, 79];
+  var KORT = [1, 1, 1, 1.5, 2, 2.5, 3, 3, 3, 3];
+  var SCHEMAS = {
+    standaard: { note: "Gangbare startweken (5, 8, 12, 19, 26, 37, 46, 55, 64, 75). De einddata zijn mijn eigen schatting, geen officiële bron.", f: function (i) { return [BW[i], BE[i]]; } },
+    kort: { note: "Zelfde startweken, maar een kortere onrustige periode: 1 tot 3 weken per sprong. Eigen schatting, geen officiële bron.", f: function (i) { return [BW[i], BW[i] + KORT[i]]; } },
+    lang: { note: "Begint een halve week eerder en duurt een week langer dan standaard. Eigen schatting, geen officiële bron.", f: function (i) { return [BW[i] - 0.5, BE[i] + 1]; } },
+    eigen: { note: "Vul de weken in die jouw bron noemt. Halve weken mogen (bijvoorbeeld 20.5).", f: function (i) { return custom[i]; } }
+  };
+  var custom = BW.map(function (w, i) { return [w, BE[i]]; });
+  var state0 = { count: "due", schema: "standaard" };
+  try {
+    var saved = JSON.parse(localStorage.getItem("sprongenmeter") || "null");
+    if (saved) { if (saved.count === "born" || saved.count === "due") state0.count = saved.count; if (saved.schema && SCHEMAS[saved.schema]) state0.schema = saved.schema; if (saved.custom && saved.custom.length === 10) custom = saved.custom; }
+  } catch (e) {}
+  function save() { try { localStorage.setItem("sprongenmeter", JSON.stringify({ count: state0.count, schema: state0.schema, custom: custom })); } catch (e) {} }
+  function wk(x) { return String(Math.round(x * 10) / 10).replace(".", ","); }
 
   var $ = function (id) { return document.getElementById(id); };
   function utc(s) { var p = s.split("-").map(Number); return Date.UTC(p[0], p[1] - 1, p[2]); }
@@ -187,7 +224,7 @@ footer p { margin: 0 0 6px; }
   function dialSVG(week) {
     var cx = 110, cy = 110, r = 98, start = -135, sweep = 270, out = "";
     out += '<circle class="face" cx="' + cx + '" cy="' + cy + '" r="108"/>';
-    var leapWeeks = {}; LEAPS.forEach(function (l) { leapWeeks[l.w] = 1; });
+    var leapWeeks = {}; LEAPS.forEach(function (l) { leapWeeks[Math.round(l.w)] = 1; });
     for (var i = 0; i <= MAXW; i++) {
       var a = (start + sweep * i / MAXW - 90) * Math.PI / 180;
       var big = i % 10 === 0, lw = leapWeeks[i];
@@ -231,7 +268,17 @@ footer p { margin: 0 0 6px; }
     var born = utc($("in-born").value), due = utc($("in-due").value), today = todayUTC();
     if (isNaN(born) || isNaN(due)) return;
     var early = Math.round((due - born) / DAY);
-    var ageD = Math.round((today - born) / DAY), corrD = Math.round((today - due) / DAY);
+    var anchor = state0.count === "born" ? born : due;
+    var sch = SCHEMAS[state0.schema];
+    LEAPS.forEach(function (l, i) { var t = sch.f(i), w = Number(t[0]), e = Number(t[1]); if (isNaN(w)) w = BW[i]; if (isNaN(e) || e <= w) e = w + 0.5; l.w = w; l.e = e; });
+    var ageD = Math.round((today - born) / DAY), corrD = Math.round((today - anchor) / DAY);
+    var earlyD = Math.max(0, early);
+    $("schema-note").textContent = sch.note;
+    $("s-corr-label").textContent = state0.count === "born" ? "Sprongleeftijd (vanaf geboorte)" : "Sprongleeftijd";
+    $("s-corr-sub").textContent = state0.count === "born" ? "geteld vanaf geboortedatum" : "geteld vanaf uitgerekend";
+    $("f-note").textContent = state0.count === "born"
+      ? "Je telt nu vanaf de geboortedatum. Veel bronnen tellen vanaf de uitgerekende datum, dan komt elke sprong " + plural(earlyD, "dag", "dagen") + " later."
+      : "De sprongen tellen vanaf de uitgerekende datum, niet vanaf de geboortedatum. Een baby die " + plural(earlyD, "dag", "dagen") + " te vroeg komt, maakt elke sprong dus " + plural(earlyD, "dag", "dagen") + " later door dan de kalenderleeftijd doet vermoeden.";
     var weekF = corrD / 7;
 
     $("s-born").textContent = fLong.format(born);
@@ -244,7 +291,7 @@ footer p { margin: 0 0 6px; }
 
     var state = {}, current = null, next = null;
     LEAPS.forEach(function (l) {
-      var s = due + l.w * 7 * DAY, e = due + l.e * 7 * DAY;
+      var s = anchor + Math.round(l.w * 7) * DAY, e = anchor + Math.round(l.e * 7) * DAY;
       l.sd = s; l.ed = e;
       if (today >= e) state[l.n] = "past";
       else if (today >= s) { state[l.n] = "now"; current = l; }
@@ -278,11 +325,24 @@ footer p { margin: 0 0 6px; }
       var st = state[l.n], cls = st === "future" ? (l.n === nextN ? "next" : "later") : st;
       var txt = st === "past" ? "Voorbij" : st === "now" ? "Nu bezig" : l.n === nextN ? "Volgende" : "Straks";
       return '<li class="leap ' + cls + '"><div class="knob">' + l.n + '</div><div><h3>' + l.name + '</h3><p>' + l.d + '</p><div class="skills">' +
-        l.s.map(function (x) { return "<span>" + x + "</span>"; }).join("") + '</div></div><div class="when num"><span class="label">Week ' + l.w + '–' + l.e + '</span><b>' +
+        l.s.map(function (x) { return "<span>" + x + "</span>"; }).join("") + '</div></div><div class="when num"><span class="label">Week ' + wk(l.w) + '–' + wk(l.e) + '</span><b>' +
         fShort.format(l.sd) + ' – ' + fShort.format(l.ed) + '</b><span>' + (l.sd < today ? "" : "over " + plural(Math.round((l.sd - today) / DAY), "dag", "dagen")) + '</span><span class="state">' + txt + '</span></div></li>';
     }).join("");
   }
 
+  var cust = $("custom");
+  cust.innerHTML = custom.map(function (c, i) {
+    return '<div class="row"><label class="label" for="cw-' + i + '">Sprong ' + (i + 1) + '</label><div class="pair"><input type="number" step="0.5" min="0" max="120" id="cw-' + i + '" value="' + c[0] + '" aria-label="Start sprong ' + (i + 1) + ' in weken"><span>–</span><input type="number" step="0.5" min="0" max="120" id="ce-' + i + '" value="' + c[1] + '" aria-label="Einde sprong ' + (i + 1) + ' in weken"></div></div>';
+  }).join("");
+  function syncCustom() { cust.hidden = state0.schema !== "eigen"; }
+  custom.forEach(function (c, i) {
+    ["cw-", "ce-"].forEach(function (pre, k) {
+      $(pre + i).addEventListener("input", function () { var v = parseFloat(this.value); if (!isNaN(v)) { custom[i][k] = v; save(); render(); } });
+    });
+  });
+  $("in-count").value = state0.count; $("in-schema").value = state0.schema; syncCustom();
+  $("in-count").addEventListener("change", function () { state0.count = this.value; save(); render(); });
+  $("in-schema").addEventListener("change", function () { state0.schema = this.value; syncCustom(); save(); render(); });
   $("in-born").addEventListener("change", render);
   $("in-due").addEventListener("change", render);
   render();
