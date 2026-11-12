@@ -43,6 +43,20 @@ class Shot:
     process: str = ""
     kind: str = "screen"
     meta: dict = field(default_factory=dict)
+    scale: float = 1.0      # device pixels per logical (GDK) pixel, e.g. 2.0 on a 200% HiDPI desktop
+
+
+def scale_factor() -> int:
+    """GDK window scale (1 normally, 2 on HiDPI). Screen coordinates from GDK are logical; X11 / ffmpeg use device pixels."""
+    try:
+        return max(1, Gdk.Display.get_default().get_monitor(0).get_scale_factor())
+    except Exception:
+        return 1
+
+
+def to_device(rect):
+    k = scale_factor()
+    return tuple(int(round(v * k)) for v in rect)
 
 
 def virtual_screen():
@@ -83,17 +97,18 @@ def monitor_at_pointer():
     return monitors()[0]
 
 
-def _draw_cursor(img, x, y):
+def _draw_cursor(img, x, y, w_logical):
     try:
         d = Gdk.Display.get_default()
         cur = Gdk.Cursor.new_for_display(d, Gdk.CursorType.LEFT_PTR).get_image()
         if cur is None:
             return img
+        k = img.width / max(1, w_logical)
         px, py = pointer_position()
         c = gfx.pixbuf_to_pil(cur)
         hx = int(cur.get_option("x_hot") or 0)
         hy = int(cur.get_option("y_hot") or 0)
-        pos = (px - x - hx, py - y - hy)
+        pos = (int((px - x) * k) - hx, int((py - y) * k) - hy)
         img = img.copy()
         if 0 <= pos[0] < img.width and 0 <= pos[1] < img.height:
             img.alpha_composite(c, pos, (0, 0, min(c.width, img.width - pos[0]), min(c.height, img.height - pos[1])))
@@ -114,17 +129,19 @@ def grab_rect(x, y, w, h, cursor=False) -> Image.Image:
     if pb is None:
         raise RuntimeError("Could not read the screen (is this an X11 session?).")
     img = gfx.pixbuf_to_pil(pb)
-    return _draw_cursor(img, x0, y0) if cursor else img
+    return _draw_cursor(img, x0, y0, x1 - x0) if cursor else img
 
 
 def grab_fullscreen(cursor=False) -> Shot:
     x, y, w, h = virtual_screen()
-    return Shot(grab_rect(x, y, w, h, cursor), x, y, "Desktop", "", "fullscreen")
+    img = grab_rect(x, y, w, h, cursor)
+    return Shot(img, x, y, "Desktop", "", "fullscreen", scale=img.width / max(1, w))
 
 
 def grab_monitor(index=None, cursor=False) -> Shot:
     m = monitor_at_pointer() if index is None else monitors()[index]
-    return Shot(grab_rect(m["x"], m["y"], m["w"], m["h"], cursor), m["x"], m["y"], m["name"], "", "monitor")
+    img = grab_rect(m["x"], m["y"], m["w"], m["h"], cursor)
+    return Shot(img, m["x"], m["y"], m["name"], "", "monitor", scale=img.width / max(1, m["w"]))
 
 
 def _xprop_name(xid):
@@ -185,7 +202,8 @@ def active_window():
 
 
 def grab_window(wi: WindowInfo, cursor=False) -> Shot:
-    return Shot(grab_rect(wi.x, wi.y, wi.w, wi.h, cursor), wi.x, wi.y, wi.title, wi.process, "window")
+    img = grab_rect(wi.x, wi.y, wi.w, wi.h, cursor)
+    return Shot(img, wi.x, wi.y, wi.title, wi.process, "window", scale=img.width / max(1, wi.w))
 
 
 def grab_active_window(cursor=False) -> Shot:
@@ -196,7 +214,8 @@ def grab_active_window(cursor=False) -> Shot:
 
 
 def grab_region(x, y, w, h, cursor=False) -> Shot:
-    return Shot(grab_rect(x, y, w, h, cursor), x, y, "Region", "", "region")
+    img = grab_rect(x, y, w, h, cursor)
+    return Shot(img, x, y, "Region", "", "region", scale=img.width / max(1, w))
 
 
 def pixel_at(img: Image.Image, x, y):

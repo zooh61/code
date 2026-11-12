@@ -143,3 +143,30 @@ def test_recorder_commands():
     from mintshare import recorder
     cmd = recorder.build_command((10, 20, 801, 601), "/tmp/o.mp4", 30, True, True)
     assert "800x600" in cmd and ":0+10,20" in " ".join(cmd).replace(os.environ.get("DISPLAY", ":0"), ":0") and "pulse" in cmd
+
+
+def test_hotkey_backup_and_restore(tmp_path, monkeypatch):
+    from mintshare import hotkeys
+    store = {"media|screenshot": "['Print']", "media|area-screenshot": "['<Primary>Print']", "list": "['custom0']"}
+
+    class R:
+        def __init__(self, out=""):
+            self.stdout = out
+
+    def fake_gs(cmd, *a):
+        if cmd == "get":
+            key = "list" if a[1] == "custom-list" else f"media|{a[1]}"
+            return R(store.get(key, "@as []"))
+        if cmd == "set":
+            key = "list" if a[1] == "custom-list" else f"media|{a[1]}" if "media-keys" in a[0] else a[0] + a[1]
+            store[key] = a[2]
+        return R()
+    monkeypatch.setattr(hotkeys, "_gs", fake_gs)
+    monkeypatch.setattr(hotkeys, "BACKUP_FILE", str(tmp_path / "backup.json"))
+    wf = [{"name": "Full", "hotkey": "Print"}, {"name": "Region", "hotkey": "<Control>Print"}]
+    assert any("screenshot" in l for l in hotkeys.plan_cinnamon(wf))
+    assert hotkeys.apply_cinnamon(wf) == 2
+    assert store["media|screenshot"] == "[]" and "mintshare-0" in store["list"] and "custom0" in store["list"]
+    assert sorted(hotkeys.clear_cinnamon()) == ["area-screenshot", "screenshot"]
+    assert store["media|screenshot"] == "['Print']" and store["media|area-screenshot"] == "['<Primary>Print']"
+    assert store["list"] == "['custom0']"

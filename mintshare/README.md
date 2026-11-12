@@ -14,6 +14,19 @@ mintshare --apply-hotkeys
 
 Verwijderen: `./uninstall.sh`. Starten zonder installeren: `./bin/mintshare`.
 
+## Wat verandert er op je systeem? (en hoe draai je het terug)
+
+* `./install.sh --dry-run` laat zien welke apt-pakketten en bestanden erbij komen; er wordt niets gewijzigd.
+  Zonder `--dry-run` vraagt het script eerst om bevestiging. Alles van MintShare zelf komt in `~/.local` (geen root nodig).
+* Sneltoetsen worden **alleen** aangepast als je zelf `mintshare --apply-hotkeys` uitvoert. Bekijk eerst wat er zou
+  veranderen met `mintshare --show-hotkey-changes`. Van de ingebouwde Cinnamon-sneltoetsen die worden vrijgemaakt
+  (bijv. `Print`) wordt een back-up bewaard.
+* `mintshare --remove-hotkeys` of `./uninstall.sh` zet de originele sneltoetsen exact terug en verwijdert de
+  eigen sneltoetsen, het menu-item en de autostart. Instellingen blijven in `~/.config/mintshare` (zelf te verwijderen).
+* Er wordt **niets automatisch geüpload**: uploaden staat standaard uit en gebeurt alleen als jij het kiest. Er is geen
+  telemetrie. Uploads gaan naar de dienst die jij kiest (ook je eigen server via FTP/SFTP/WebDAV/S3/map).
+* HiDPI (bijv. 4K met 200% schaling) wordt ondersteund en is getest met `GDK_SCALE=2`.
+
 ## Wat kan het
 
 | ShareX-functie | MintShare |

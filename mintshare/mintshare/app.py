@@ -146,6 +146,15 @@ class MintShare(Gtk.Application):
                 cl.print_literal(f"MintShare {__version__}\n")
             elif a == "--apply-hotkeys":
                 cl.print_literal(self.apply_hotkeys() + "\n")
+            elif a == "--remove-hotkeys":
+                if self.xhotkeys:
+                    self.xhotkeys.stop()
+                self.config.set("general.hotkeys_applied", False)
+                r = hotkeys.clear_cinnamon() if hotkeys.is_cinnamon() else []
+                cl.print_literal("Hotkeys removed" + (f"; restored Cinnamon bindings: {', '.join(r)}" if r else "") + "\n")
+            elif a == "--show-hotkey-changes":
+                cl.print_literal("\n".join(hotkeys.plan_cinnamon(self.config.get("workflows", []),
+                                 self.config.get("general.take_over_print_screen", True)) or ["(nothing)"]) + "\n")
             elif a == "--workflow" and i + 1 < len(args):
                 i += 1
                 if not self.run_workflow(args[i]):
@@ -276,9 +285,9 @@ class MintShare(Gtk.Application):
         from .ui.toolwins import QRWindow
         self._singleton("qr", QRWindow, self, text).entry.get_buffer().set_text(text)
 
-    def pin_image(self, img, x=None, y=None):
+    def pin_image(self, img, x=None, y=None, scale=None):
         from .ui.toolwins import PinWindow
-        PinWindow(img, x, y)
+        PinWindow(img, x, y, scale if scale else 1.0 / capture.scale_factor())
 
     def print_image(self, img):
         op = Gtk.PrintOperation()
@@ -352,9 +361,11 @@ class MintShare(Gtk.Application):
 
     def _crop(self, shot, rect):
         x, y, w, h = [int(v) for v in rect]
-        lx, ly = x - shot.x, y - shot.y
-        img = shot.image.crop((max(0, lx), max(0, ly), min(shot.image.width, lx + w), min(shot.image.height, ly + h)))
-        return capture.Shot(img, x, y, shot.title, shot.process, "region")
+        k = shot.scale
+        lx, ly = int(round((x - shot.x) * k)), int(round((y - shot.y) * k))
+        img = shot.image.crop((max(0, lx), max(0, ly), min(shot.image.width, lx + int(round(w * k))),
+                               min(shot.image.height, ly + int(round(h * k)))))
+        return capture.Shot(img, x, y, shot.title, shot.process, "region", scale=k)
 
     def _select(self, mode, done, delay=None, hide=True):
         """Freeze the screen and let the user pick; done(shot, rect, hidden) gets None rect when cancelled."""
@@ -455,7 +466,8 @@ class MintShare(Gtk.Application):
                 return
             x, y, w, h = [int(v) for v in rect]
             cx, cy = x + w // 2, y + h // 2
-            subprocess.run(["xdotool", "mousemove", str(cx), str(cy)], capture_output=True)
+            dx, dy = capture.to_device((cx, cy))
+            subprocess.run(["xdotool", "mousemove", str(dx), str(dy)], capture_output=True)
             self.scroll_state = {"rect": (x, y, w, h), "stitch": None, "steps": 0, "stop": False, "hidden": hidden, "ov": ov}
             self.notify("Scrolling capture", "Keep the pointer over the content. Run “Scrolling capture” again to stop.")
             GLib.timeout_add(700, self._scroll_tick)
@@ -564,7 +576,7 @@ class MintShare(Gtk.Application):
             cfg = dict(self.config.get("recording"))
             cfg["_dir"] = self.config.video_dir()
             try:
-                self.recorder.start(rect, cfg, gif=gif, title=title)
+                self.recorder.start(capture.to_device(rect), cfg, gif=gif, title=title)   # ffmpeg works in device pixels
             except RecorderError as e:
                 self.notify("Recording failed", str(e), error=True)
                 return
@@ -734,7 +746,7 @@ class MintShare(Gtk.Application):
             self._restore_windows(hidden)
             if rect:
                 s = self._crop(shot, rect)
-                self.pin_image(s.image, s.x, s.y)
+                self.pin_image(s.image, s.x, s.y, 1.0 / s.scale)
         self._select("region", done)
 
     def act_pin_clipboard(self, ov=None):

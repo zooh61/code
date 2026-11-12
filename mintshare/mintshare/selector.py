@@ -33,7 +33,8 @@ class Overlay(Gtk.Window):
         self.dim = cfg.get("dim", 0.45)
         self.ox, self.oy = shot.x, shot.y
         self.surface = gfx.pil_to_surface(shot.image)
-        self.W, self.H = shot.image.width, shot.image.height
+        self.k = getattr(shot, "scale", 1.0) or 1.0          # device pixels per logical pixel
+        self.W, self.H = int(round(shot.image.width / self.k)), int(round(shot.image.height / self.k))
         self.px = self.py = 0
         self.start = None
         self.sel = None
@@ -85,6 +86,10 @@ class Overlay(Gtk.Window):
             GLib.idle_add(self.on_done, result)
 
     # ------------------------------------------------------------ geometry
+    def _pixel(self, x, y):
+        im = self.shot.image
+        return im.getpixel((max(0, min(im.width - 1, int(x * self.k))), max(0, min(im.height - 1, int(y * self.k)))))[:3]
+
     def _norm(self, a, b):
         x0, x1 = sorted((a[0], b[0]))
         y0, y1 = sorted((a[1], b[1]))
@@ -124,7 +129,7 @@ class Overlay(Gtk.Window):
         if ev.button != 1 or self.start is None:
             return True
         if self.mode == "color":
-            r, g, b = (int(v) for v in self.shot.image.getpixel((int(ev.x), int(ev.y)))[:3])
+            r, g, b = (int(v) for v in self._pixel(ev.x, ev.y))
             self.finish((r, g, b, int(ev.x) + self.ox, int(ev.y) + self.oy))
             return True
         if self.mode == "ruler":
@@ -173,9 +178,15 @@ class Overlay(Gtk.Window):
         cr.move_to(x, y)
         PangoCairo.show_layout(cr, layout)
 
-    def _draw(self, _w, cr):
+    def _paint_shot(self, cr):
+        cr.save()
+        cr.scale(1 / self.k, 1 / self.k)
         cr.set_source_surface(self.surface, 0, 0)
         cr.paint()
+        cr.restore()
+
+    def _draw(self, _w, cr):
+        self._paint_shot(cr)
         sel = self.sel if (self.sel and self.sel[2] > 0 and self.sel[3] > 0) else None
         highlight = sel if (sel and self.mode != "ruler") else (self.hover if self.mode != "color" else None)
         if self.mode in ("region", "window") and self.dim:
@@ -185,8 +196,7 @@ class Overlay(Gtk.Window):
                 cr.save()
                 cr.rectangle(*highlight)
                 cr.clip()
-                cr.set_source_surface(self.surface, 0, 0)
-                cr.paint()
+                self._paint_shot(cr)
                 cr.restore()
         if highlight and self.mode != "ruler":
             cr.set_line_width(2 if sel else 3)
@@ -245,6 +255,7 @@ class Overlay(Gtk.Window):
         cr.translate(lx, ly)
         cr.scale(zoom, zoom)
         cr.translate(half - int(self.px), half - int(self.py))
+        cr.scale(1 / self.k, 1 / self.k)
         cr.set_source_surface(self.surface, 0, 0)
         cr.get_source().set_filter(cairo.FILTER_NEAREST)
         cr.paint()
@@ -259,7 +270,7 @@ class Overlay(Gtk.Window):
         cr.rectangle(cx + .5, ly + half * zoom + .5, zoom - 1, zoom - 1)
         cr.stroke()
         try:
-            r, g, b = self.shot.image.getpixel((int(self.px), int(self.py)))[:3]
+            r, g, b = self._pixel(self.px, self.py)
             self._label(cr, f"#{r:02X}{g:02X}{b:02X}  rgb({r},{g},{b})  [{int(self.px + self.ox)},{int(self.py + self.oy)}]",
                         lx, ly + size + 4)
         except Exception:

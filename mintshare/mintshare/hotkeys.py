@@ -5,7 +5,12 @@ import shutil
 import subprocess
 import sys
 import threading
+import json
 
+from . import paths
+
+BACKUP_FILE = os.path.join(paths.CONFIG_DIR, "cinnamon-keybindings-backup.json")
+MEDIA_SCHEMA = "org.cinnamon.desktop.keybindings.media-keys"
 CIN_SCHEMA = "org.cinnamon.desktop.keybindings"
 CIN_KB = "org.cinnamon.desktop.keybindings.custom-keybinding"
 PREFIX = "mintshare-"
@@ -38,6 +43,34 @@ def _parse_list(out):
 
 
 # ---------------------------------------------------------------- Cinnamon backend
+def _save_backup(freed):
+    """Remember the original built-in bindings (once) so they can be restored exactly."""
+    if os.path.exists(BACKUP_FILE):
+        data = json.load(open(BACKUP_FILE))
+    else:
+        data = {"media_keys": {}}
+    data["media_keys"].update({k: v for k, v in freed.items() if k not in data["media_keys"]})
+    os.makedirs(os.path.dirname(BACKUP_FILE), exist_ok=True)
+    with open(BACKUP_FILE, "w") as f:
+        json.dump(data, f, indent=1)
+
+
+def plan_cinnamon(workflows, take_over_print=True):
+    """Return a human-readable list of what apply_cinnamon would change (nothing is changed)."""
+    lines = []
+    for w in workflows:
+        if w.get("hotkey"):
+            lines.append(f"add custom shortcut  {w['hotkey']:<22} -> MintShare: {w['name']}")
+    if take_over_print:
+        wanted = {w["hotkey"] for w in workflows if w.get("hotkey")}
+        for key in MEDIA_KEYS:
+            cur_b = _parse_list(_gs("get", MEDIA_SCHEMA, key).stdout)
+            hit = [b for b in cur_b if b in wanted or b.replace("<Primary>", "<Control>") in wanted]
+            if hit:
+                lines.append(f"clear Cinnamon's own '{key}' shortcut {hit} (a backup is kept; undo with --remove-hotkeys)")
+    return lines
+
+
 def apply_cinnamon(workflows, take_over_print=True):
     cur = _parse_list(_gs("get", CIN_SCHEMA, "custom-list").stdout)
     keep = [c for c in cur if not c.startswith(PREFIX)]
@@ -57,16 +90,35 @@ def apply_cinnamon(workflows, take_over_print=True):
     _gs("set", CIN_SCHEMA, "custom-list", str(keep + mine))
     if take_over_print:
         wanted = {w["hotkey"] for w in workflows if w.get("hotkey")}
+        freed = {}
         for key in MEDIA_KEYS:
-            cur_b = _parse_list(_gs("get", "org.cinnamon.desktop.keybindings.media-keys", key).stdout)
+            cur_b = _parse_list(_gs("get", MEDIA_SCHEMA, key).stdout)
             if any(b in wanted or b.replace("<Primary>", "<Control>") in wanted for b in cur_b):
-                _gs("set", "org.cinnamon.desktop.keybindings.media-keys", key, "[]")
+                freed[key] = cur_b
+        if freed:
+            _save_backup(freed)                      # backup first, then clear
+            for key in freed:
+                _gs("set", MEDIA_SCHEMA, key, "[]")
     return len(mine)
 
 
 def clear_cinnamon():
+    """Undo everything apply_cinnamon did: remove our shortcuts and restore Cinnamon's original bindings."""
     cur = _parse_list(_gs("get", CIN_SCHEMA, "custom-list").stdout)
+    for old in cur:
+        if old.startswith(PREFIX):
+            _gs("reset", f"{CIN_KB}:/org/cinnamon/desktop/keybindings/custom-keybindings/{old}/", "binding")
     _gs("set", CIN_SCHEMA, "custom-list", str([c for c in cur if not c.startswith(PREFIX)]))
+    restored = []
+    if os.path.exists(BACKUP_FILE):
+        try:
+            for key, val in json.load(open(BACKUP_FILE)).get("media_keys", {}).items():
+                _gs("set", MEDIA_SCHEMA, key, str(val))
+                restored.append(key)
+            os.remove(BACKUP_FILE)
+        except (OSError, ValueError):
+            pass
+    return restored
 
 
 # ---------------------------------------------------------------- generic X11 backend
@@ -159,3 +211,20 @@ def accelerator_label(acc):
     from gi.repository import Gtk
     k, m = Gtk.accelerator_parse(acc)
     return Gtk.accelerator_get_label(k, m) if k else acc
+
+
+if __name__ == "__main__":      # works without GTK: python3 -m mintshare.hotkeys --remove | --status
+    import argparse
+    ap = argparse.ArgumentParser(prog="mintshare.hotkeys")
+    ap.add_argument("--remove", action="store_true", help="remove MintShare shortcuts and restore Cinnamon's originals")
+    ap.add_argument("--status", action="store_true", help="show what MintShare changed")
+    a = ap.parse_args()
+    if not is_cinnamon():
+        print("Not a Cinnamon session: MintShare did not change any desktop shortcuts.")
+    elif a.remove:
+        r = clear_cinnamon()
+        print("MintShare shortcuts removed." + (f" Restored: {', '.join(r)}." if r else ""))
+    else:
+        cur = _parse_list(_gs("get", CIN_SCHEMA, "custom-list").stdout)
+        print("MintShare shortcuts:", [c for c in cur if c.startswith(PREFIX)] or "none")
+        print("Backup of original bindings:", "present" if os.path.exists(BACKUP_FILE) else "none")

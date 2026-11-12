@@ -691,10 +691,10 @@ class ThumbnailerWindow(_ImageToolBase):
 # ---------------------------------------------------------------- pin to screen
 class PinWindow(Gtk.Window):
     """Borderless always-on-top image. Drag to move, wheel to zoom, Ctrl+wheel for opacity, double-click/Esc to close."""
-    def __init__(self, img, x=None, y=None):
+    def __init__(self, img, x=None, y=None, scale=1.0):
         super().__init__(type=Gtk.WindowType.TOPLEVEL)
         self.img = img.convert("RGBA")
-        self.scale = 1.0
+        self.scale = scale
         self.set_decorated(False)
         self.set_keep_above(True)
         self.set_skip_taskbar_hint(True)
