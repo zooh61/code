@@ -1,0 +1,12 @@
+[project]
+name = "mintshare"
+version = "1.0.0"
+description = "ShareX-style screenshot, screen recording and upload tool for Linux Mint"
+requires-python = ">=3.10"
+dependencies = ["Pillow", "requests", "qrcode"]
+
+[project.scripts]
+mintshare = "mintshare.app:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

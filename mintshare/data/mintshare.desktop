@@ -1,0 +1,24 @@
+[Desktop Entry]
+Type=Application
+Name=MintShare
+GenericName=Screenshot and upload tool
+Comment=Capture, annotate, record and share your screen (ShareX-style)
+Exec=mintshare
+Icon=applets-screenshooter
+Terminal=false
+Categories=Utility;Graphics;GTK;
+Keywords=screenshot;screen;capture;record;upload;sharex;gif;ocr;
+StartupNotify=false
+Actions=Region;Fullscreen;Record;
+
+[Desktop Action Region]
+Name=Capture region
+Exec=mintshare region
+
+[Desktop Action Fullscreen]
+Name=Capture entire screen
+Exec=mintshare fullscreen
+
+[Desktop Action Record]
+Name=Start/stop screen recording
+Exec=mintshare record_screen

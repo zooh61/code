@@ -1,0 +1,29 @@
+#!/usr/bin/python3
+"""Launcher: runs MintShare from a source checkout or from the install directory (follows symlinks).
+
+PyGObject (GTK) is installed by apt for the distribution's own Python only, so if the interpreter that started
+this script cannot import it, we re-run ourselves with one that can."""
+import os
+import subprocess
+import sys
+
+try:
+    import gi  # noqa: F401
+except ImportError:
+    if not os.environ.get("MINTSHARE_REEXEC"):
+        for v in ("3.12", "3.11", "3.10", "3.13", "3.9"):
+            exe = f"/usr/bin/python{v}"
+            if os.path.exists(exe) and subprocess.run([exe, "-c", "import gi"], capture_output=True).returncode == 0:
+                os.environ["MINTSHARE_REEXEC"] = "1"
+                os.execv(exe, [exe, os.path.realpath(__file__), *sys.argv[1:]])
+    sys.exit("MintShare needs PyGObject: sudo apt install python3-gi gir1.2-gtk-3.0")
+
+here = os.path.dirname(os.path.realpath(__file__))
+for cand in (os.path.join(here, ".."), here):
+    if os.path.isdir(os.path.join(cand, "mintshare")):
+        sys.path.insert(0, os.path.abspath(cand))
+        break
+
+from mintshare.app import main  # noqa: E402
+
+sys.exit(main())
