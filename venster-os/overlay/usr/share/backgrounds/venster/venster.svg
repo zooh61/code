@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a2a5e"/>
+      <stop offset="0.55" stop-color="#0f4fa8"/>
+      <stop offset="1" stop-color="#062047"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.62" cy="0.48" r="0.55">
+      <stop offset="0" stop-color="#7cc4ff" stop-opacity="0.85"/>
+      <stop offset="0.35" stop-color="#2f86e8" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#0f4fa8" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ray" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="0.7" stop-color="#bfe3ff" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.75"/>
+    </linearGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#sky)"/>
+  <rect width="1920" height="1080" fill="url(#glow)"/>
+  <g transform="translate(1190 520)">
+    <path d="M -1300 -520 L 0 -18 L 0 18 L -1300 -260 Z" fill="url(#ray)" opacity="0.55"/>
+    <path d="M -1300 -120 L 0 -10 L 0 10 L -1300 60 Z" fill="url(#ray)" opacity="0.45"/>
+    <path d="M -1300 330 L 0 -6 L 0 16 L -1300 600 Z" fill="url(#ray)" opacity="0.4"/>
+  </g>
+  <g transform="translate(1190 520) rotate(-8)" opacity="0.9">
+    <path d="M -150 -170 L 150 -130 L 150 130 L -150 170 Z" fill="none" stroke="#dff1ff" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M -110 -112 L 110 -88 L 110 88 L -110 112 Z" fill="#9fd4ff" fill-opacity="0.18"/>
+  </g>
+</svg>

@@ -1,0 +1,4 @@
+# Venster OS: compressed swap in RAM, so 2 GB goes further.
+ALGO=zstd
+PERCENT=75
+PRIORITY=100

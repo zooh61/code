@@ -1,0 +1,13 @@
+[Unit]
+Description=Venster OS: use the whole SD card on first boot
+ConditionPathExists=!/var/lib/venster/firstboot-done
+After=local-fs.target
+Before=lightdm.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/venster/firstboot.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

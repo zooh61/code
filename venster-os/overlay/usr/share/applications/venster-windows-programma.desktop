@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Windows-programma
+Name[en]=Windows program
+Comment=Start een Windows-programma met Wine
+Exec=/usr/local/bin/venster-windows %f
+Icon=wine
+Terminal=false
+NoDisplay=true
+MimeType=application/x-ms-dos-executable;application/x-msdownload;application/x-msi;application/x-ms-shortcut;application/vnd.microsoft.portable-executable;application/x-dosexec;application/x-bat;application/x-wine-extension-msp;

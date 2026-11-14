@@ -1,0 +1,3 @@
+# <file system>    <mount point>   <type> <options>          <dump> <pass>
+LABEL=RASPIROOT    /               ext4   rw,noatime,commit=60 0    1
+LABEL=RASPIFIRM    /boot/firmware  vfat   rw,noatime,umask=0022 0   2

@@ -1,0 +1,53 @@
+# Builds the Venster OS image for the Raspberry Pi 4 and publishes it as a
+# GitHub release, so it can be downloaded and written with Raspberry Pi Imager.
+name: Venster OS image
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "venster-os/**"
+      - ".github/workflows/venster-os.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    # A native arm64 machine: no CPU emulation needed, so the build is fast.
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mmdebstrap debian-archive-keyring parted \
+            dosfstools e2fsprogs xz-utils python3 curl rsync
+
+      - name: Build the image
+        run: sudo ./venster-os/build.sh "$GITHUB_WORKSPACE/out"
+
+      - name: Name the release
+        id: name
+        run: echo "tag=venster-os-$(date +%Y%m%d)-${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish the release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.name.outputs.tag }}
+          name: Venster OS ${{ steps.name.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          prerelease: ${{ github.ref != 'refs/heads/master' }}
+          files: |
+            out/*.img.xz
+            out/*.sha256
+          body: |
+            Venster OS voor de Raspberry Pi 4 (2 GB of meer).
+
+            1. Download het bestand `.img.xz` hieronder.
+            2. Open Raspberry Pi Imager → **Besturingssysteem kiezen** → **Eigen image gebruiken** en kies het bestand.
+            3. Kies de SD-kaart en klik op **Schrijven**. Sla de vraag om instellingen aan te passen over (kies *Nee*).
+
+            Gebruiker: `gebruiker` · wachtwoord: `venster` (logt automatisch in).

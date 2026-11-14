@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Windows-programma's verwijderen
+Name[en]=Uninstall Windows programs
+Comment=Geïnstalleerde Windows-programma's verwijderen
+Exec=sh -c 'command -v wine >/dev/null && exec wine uninstaller || exec /usr/local/bin/venster-windows'
+Icon=wine
+Terminal=false
+Categories=Settings;

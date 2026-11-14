@@ -1,0 +1,40 @@
+#!/bin/bash
+# Venster OS: open a Windows program (.exe, .msi, .bat, .lnk) with Wine.
+# Without a file, ask which installer to run.
+set -u
+
+notify() { notify-send -i wine -a "Windows-programma's" "$1" "${2:-}" 2>/dev/null || true; }
+
+if ! command -v wine >/dev/null 2>&1; then
+    notify "Windows-ondersteuning ontbreekt" "Die wordt nu geïnstalleerd (internet nodig). Het wachtwoord is 'venster'."
+    xfce4-terminal --title "Windows-ondersteuning installeren" --hold \
+        -x pkexec /usr/local/lib/venster/install-windows-support.sh
+    command -v wine >/dev/null 2>&1 || exit 1
+fi
+
+# Box64 is the fastest x86 emulator on the Raspberry Pi 4.
+if [ -z "${HODLL:-}" ] && [ -n "$(find /usr/lib /usr/local/lib /opt -name wowbox64.dll -print -quit 2>/dev/null)" ]; then
+    export HODLL=wowbox64.dll
+fi
+
+if [ ! -d "${WINEPREFIX:-$HOME/.wine}/drive_c" ]; then
+    notify "Windows-omgeving wordt klaargezet" "De eerste keer duurt dit 1 à 2 minuten. Even geduld..."
+    wineboot -i >/dev/null 2>&1
+fi
+
+file="${1:-}"
+if [ -z "$file" ]; then
+    file="$(zenity --file-selection --title="Kies een Windows-programma of installatiebestand" \
+        --filename="$(xdg-user-dir DOWNLOAD 2>/dev/null || echo "$HOME")/" \
+        --file-filter="Windows-programma's | *.exe *.EXE *.msi *.MSI *.bat *.BAT" \
+        --file-filter="Alle bestanden | *" 2>/dev/null)" || exit 0
+fi
+[ -e "$file" ] || { notify "Bestand niet gevonden" "$file"; exit 1; }
+
+notify "Windows-programma wordt gestart" "$(basename "$file")"
+cd "$(dirname "$file")" || true
+case "${file,,}" in
+    *.msi)       exec wine msiexec /i "$file" ;;
+    *.bat|*.cmd) exec wine cmd /c "$file" ;;
+    *)           exec wine start /wait /unix "$file" ;;
+esac

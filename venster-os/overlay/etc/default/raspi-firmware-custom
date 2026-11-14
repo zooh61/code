@@ -1,0 +1,4 @@
+# Venster OS: use the whole screen and the full CPU speed.
+disable_overscan=1
+arm_boost=1
+disable_splash=1

@@ -1,0 +1,7 @@
+# Venster OS: boot from the partition labelled RASPIROOT and reserve
+# memory for the graphics driver (needed for a smooth desktop).
+ROOTPART=LABEL=RASPIROOT
+CMA=256M
+CONSOLES="tty0"
+KERNEL="auto"
+INITRAMFS="auto"

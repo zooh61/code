@@ -1,0 +1,12 @@
+[Default Applications]
+application/x-ms-dos-executable=venster-windows-programma.desktop
+application/x-msdownload=venster-windows-programma.desktop
+application/x-msi=venster-windows-programma.desktop
+application/x-ms-shortcut=venster-windows-programma.desktop
+application/vnd.microsoft.portable-executable=venster-windows-programma.desktop
+application/x-dosexec=venster-windows-programma.desktop
+application/x-bat=venster-windows-programma.desktop
+x-scheme-handler/http=firefox-esr.desktop
+x-scheme-handler/https=firefox-esr.desktop
+text/html=firefox-esr.desktop
+application/pdf=firefox-esr.desktop
