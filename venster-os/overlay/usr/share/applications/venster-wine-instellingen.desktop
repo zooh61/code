@@ -1,7 +1,6 @@
 [Desktop Entry]
 Type=Application
 Name=Windows-instellingen (Wine)
-Name[en]=Wine settings
 Comment=Instellingen voor Windows-programma's
 Exec=sh -c 'command -v wine >/dev/null && exec winecfg || exec /usr/local/bin/venster-windows'
 Icon=wine

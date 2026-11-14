@@ -1,4 +1,4 @@
-favorites=firefox-esr.desktop,thunar.desktop,venster-windows-programma-installeren.desktop,mousepad.desktop,galculator.desktop,xfce4-terminal.desktop,xfce-settings-manager.desktop
+favorites=firefox-esr.desktop,thunar.desktop,venster-windows-programma-installeren.desktop,org.xfce.mousepad.desktop,galculator.desktop,xfce4-terminal.desktop,xfce-settings-manager.desktop
 recent=
 button-title=Start
 button-icon=venster-start

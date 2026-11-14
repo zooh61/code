@@ -1,7 +1,6 @@
 [Desktop Entry]
 Type=Application
 Name=Windows-programma
-Name[en]=Windows program
 Comment=Start een Windows-programma met Wine
 Exec=/usr/local/bin/venster-windows %f
 Icon=wine

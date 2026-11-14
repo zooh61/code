@@ -1,7 +1,6 @@
 [Desktop Entry]
 Type=Application
 Name=Windows-programma installeren
-Name[en]=Install a Windows program
 Comment=Kies een .exe- of .msi-bestand en installeer of start het
 Exec=/usr/local/bin/venster-windows
 Icon=wine
