@@ -6,10 +6,11 @@
 #
 # Requirements on the build machine (Debian or Ubuntu, run as root):
 #   apt install mmdebstrap qemu-user-static binfmt-support parted \
-#               dosfstools e2fsprogs xz-utils python3 curl rsync
+#               dosfstools mtools e2fsprogs xz-utils python3 curl
 # qemu-user-static is only needed when the build machine is not arm64.
 #
 # Usage: sudo ./build.sh [output-directory]
+# Set KEEP_WORK=1 to keep the root file system for inspection.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -27,11 +28,12 @@ log() { printf '\n\033[1;34m==> %s\033[0m\n' "$*"; }
 
 cleanup() {
     set +e
-    for mountpoint in "$WORK/mnt/boot/firmware" "$WORK/mnt" "$ROOTFS/boot/firmware"; do
-        mountpoint -q "$mountpoint" && umount -l "$mountpoint"
-    done
-    [ -n "${LOOP:-}" ] && losetup -d "$LOOP"
-    rm -rf "$WORK"
+    mountpoint -q "$ROOTFS/boot/firmware" && umount -l "$ROOTFS/boot/firmware"
+    if [ -n "${KEEP_WORK:-}" ]; then
+        echo "Work directory kept: $WORK"
+    else
+        rm -rf "$WORK"
+    fi
 }
 trap cleanup EXIT
 
@@ -77,33 +79,26 @@ for required in config.txt cmdline.txt start4.elf bcm2711-rpi-4-b.dtb; do
 done
 
 log "Creating the disk image"
+# The partitions are filled straight from the directories (mkfs.ext4 -d and
+# mcopy), so no loop devices or mounts are needed.
 ROOT_MB=$(( $(du -sm --apparent-size "$ROOTFS" | cut -f1) * 115 / 100 + FREE_SPACE_MB ))
 IMAGE="$WORK/$IMAGE_NAME.img"
-truncate -s "$(( BOOT_SIZE_MB + ROOT_MB + 4 ))M" "$IMAGE"
+
+truncate -s "${BOOT_SIZE_MB}M" "$WORK/boot.part"
+mkfs.vfat -F 32 -n RASPIFIRM "$WORK/boot.part"
+mcopy -s -i "$WORK/boot.part" "$FIRMWARE"/* ::
+
+truncate -s "${ROOT_MB}M" "$WORK/root.part"
+mkfs.ext4 -q -L RASPIROOT -O ^orphan_file -d "$ROOTFS" "$WORK/root.part"
+
+truncate -s "$(( 4 + BOOT_SIZE_MB + ROOT_MB ))M" "$IMAGE"
 parted -s "$IMAGE" mklabel msdos
-parted -s "$IMAGE" mkpart primary fat32 4MiB "$(( BOOT_SIZE_MB + 4 ))MiB"
-parted -s "$IMAGE" mkpart primary ext4 "$(( BOOT_SIZE_MB + 4 ))MiB" 100%
+parted -s "$IMAGE" mkpart primary fat32 4MiB "$(( 4 + BOOT_SIZE_MB ))MiB"
+parted -s "$IMAGE" mkpart primary ext4 "$(( 4 + BOOT_SIZE_MB ))MiB" 100%
 parted -s "$IMAGE" set 1 lba on
-
-LOOP="$(losetup --show -f -P "$IMAGE")"
-# Some build machines do not create the partition devices automatically.
-if [ ! -e "${LOOP}p1" ]; then
-    partx -a "$LOOP" || true
-fi
-mkfs.vfat -F 32 -n RASPIFIRM "${LOOP}p1"
-mkfs.ext4 -q -L RASPIROOT -O ^orphan_file "${LOOP}p2"
-
-mkdir -p "$WORK/mnt"
-mount "${LOOP}p2" "$WORK/mnt"
-rsync -aHAX --numeric-ids "$ROOTFS/" "$WORK/mnt/"
-mkdir -p "$WORK/mnt/boot/firmware"
-mount "${LOOP}p1" "$WORK/mnt/boot/firmware"
-cp -r "$FIRMWARE/." "$WORK/mnt/boot/firmware/"
-sync
-umount "$WORK/mnt/boot/firmware"
-umount "$WORK/mnt"
-losetup -d "$LOOP"
-LOOP=""
+dd if="$WORK/boot.part" of="$IMAGE" bs=1M seek=4 conv=notrunc,sparse status=none
+dd if="$WORK/root.part" of="$IMAGE" bs=1M seek=$(( 4 + BOOT_SIZE_MB )) conv=notrunc,sparse status=none
+rm -f "$WORK/boot.part" "$WORK/root.part"
 
 log "Compressing the image"
 xz -T0 -6 -c "$IMAGE" > "$OUT_DIR/$IMAGE_NAME.img.xz"

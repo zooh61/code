@@ -24,7 +24,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y mmdebstrap debian-archive-keyring parted \
-            dosfstools e2fsprogs xz-utils python3 curl rsync
+            dosfstools mtools e2fsprogs xz-utils python3 curl
 
       - name: Build the image
         run: sudo ./venster-os/build.sh "$GITHUB_WORKSPACE/out"

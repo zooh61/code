@@ -75,7 +75,7 @@ Op een Debian- of Ubuntu-computer (arm64 is het snelst; op x86 wordt ARM geëmul
 
 ```bash
 sudo apt install mmdebstrap debian-archive-keyring qemu-user-static binfmt-support \
-                 parted dosfstools e2fsprogs xz-utils python3 curl rsync
+                 parted dosfstools mtools e2fsprogs xz-utils python3 curl
 sudo ./venster-os/build.sh
 # Resultaat: venster-os/out/venster-os-<datum>.img.xz
 ```

@@ -107,3 +107,4 @@ cabextract
 unzip
 7zip
 zenity
+zstd
